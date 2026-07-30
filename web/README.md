@@ -12,7 +12,7 @@ The browser-facing half of [Brandon](../README.md), the AI fitness coach that li
 
 ## Stack
 
-- **Client:** React 18 + TypeScript, Vite, wouter, TanStack Query, Tailwind + shadcn/ui (Radix)
+- **Client:** React 19 + TypeScript, Vite, wouter, TanStack Query, Tailwind + shadcn/ui (Radix)
 - **Server:** Express + TypeScript, Drizzle ORM
 - **Services:** Supabase (Postgres + auth), Stripe, Twilio Verify, OpenAI, PostHog
 

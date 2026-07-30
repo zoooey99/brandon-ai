@@ -107,6 +107,15 @@ Each service has its own README with setup instructions:
 
 All secrets are environment-driven; each project ships a `.env.example`.
 
----
+## Tech stack
 
-*Built by [Zoey Lee](https://github.com/zoooey99). Brandon ran as a live subscription product; this monorepo is a portfolio snapshot of that production system, MIT-licensed. Take whatever's useful.*
+| Layer | Technologies |
+|---|---|
+| iMessage relay | Node.js, Express, better-sqlite3, AppleScript, macOS Messages (`chat.db`) |
+| Backend | Python, FastAPI, OpenAI API, Supabase (Postgres) |
+| Web | React 19, TypeScript, Vite, Express, Drizzle ORM, Tailwind CSS, shadcn/ui, TanStack Query |
+| Auth & payments | Supabase Auth (Google OAuth), Twilio Verify, Stripe (subscriptions, Apple Pay / Google Pay) |
+| Data & analytics | Shared Supabase Postgres, IndexedDB (offline tracking), PostHog |
+| Testing | pytest, vitest, node:test, Playwright |
+| Infra | Mac mini (relay host), Render (backend + web), cron scheduling |
+
