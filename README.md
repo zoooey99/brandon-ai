@@ -1,4 +1,6 @@
-# Brandon — an AI fitness coach that lives in your texts
+# Brandon
+
+An AI fitness coach that lives in your texts.
 
 **Personalized workouts, texted daily. No app needed.**
 
