@@ -2,7 +2,7 @@
 
 **Personalized workouts, texted daily. No app needed.**
 
-Brandon is a subscription AI fitness coach ($5/mo) that users interact with entirely over iMessage. You sign up on the web, describe your goals and equipment, and get a personalized training plan. Then Brandon texts you every day: your workout, a tracking link, and a coach you can talk to like a real person ("traveling today, no barbell" → your session gets rewritten on the spot).
+Brandon is a subscription AI fitness coach that users interact with entirely over iMessage. You sign up on the web, describe your goals and equipment, and get a personalized training plan. Then Brandon texts you every day: your workout, a tracking link, and a coach you can talk to like a real person ("traveling today, no barbell" → your session gets rewritten on the spot).
 
 This repo is a case study of the full system: three services I designed, built, and ran in production.
 
@@ -11,6 +11,8 @@ This repo is a case study of the full system: three services I designed, built, 
 ## Why iMessage?
 
 Fitness apps have a retention problem: downloading an app, creating an account, and remembering to open it is friction that kills habits. Everyone already opens their texts. Building the coach *inside* iMessage meant zero-install onboarding and a channel with near-100% open rates.
+
+Green bubbles would just not do. Blue feels like texting a real human; green feels like a verification code or a marketing scam. That trust exists precisely *because* Apple keeps iMessage closed to commercial senders. So the only way in was to text the way a human does: programmatically, but from a verified iCloud account with a real phone number.
 
 The catch: **there is no iMessage API.** Apple doesn't offer one. Solving that constraint shaped the entire architecture.
 
@@ -90,15 +92,10 @@ The only time users touch a browser: onboarding (goals → equipment → schedul
 
 Notable details:
 
-- **Twilio Verify**: phone verification so the relay can match texts to accounts
-- **Google auth**: one-tap sign-in via Supabase OAuth
-- **Apple Pay / Google Pay**: one-tap subscribe through Stripe's Payment Element
-- **Plan draft review**: edit your AI-drafted program conversationally before paying
-- **Magic tracking links**: tokenized, expiring links from Brandon's texts open your workout with no login
-- **Offline-first tracker**: sets queue in IndexedDB when gym signal drops, syncing on reconnect
-- **iMessage link unfurling**: server-injected OG tags so tracking links preview as rich cards in the thread
-- **PostHog session replay**: proxied first-party to survive ad blockers
-- **Shared Postgres (Supabase)**: the schema is the contract between web app and backend
+- **Twilio Verification**
+- **Google auth**
+- **Apple Pay / Google Pay**
+- **PostHog session replay**
 
 ## Running it
 
