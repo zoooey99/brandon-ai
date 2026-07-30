@@ -1,0 +1,19 @@
+{
+  "name": "imessage-relay",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "author": "",
+  "license": "MIT",
+  "description": "Mac-based iMessage relay server: polls Messages chat.db, forwards incoming texts to a backend, and sends replies via AppleScript with typing indicators and multi-chunk timing.",
+  "dependencies": {
+    "better-sqlite3": "^13.0.2",
+    "bplist-parser": "^0.3.2",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0"
+  }
+}

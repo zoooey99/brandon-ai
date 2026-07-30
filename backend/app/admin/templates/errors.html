@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Error Monitoring{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Error Monitoring</h1>
+    <p class="text-gray-500 mt-1">View and manage failed messages</p>
+</div>
+
+<!-- Stats Cards -->
+<div class="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="bg-white rounded-lg p-4 border shadow-sm">
+        <div class="text-2xl font-bold text-red-600">{{ stats.failed_24h }}</div>
+        <div class="text-sm text-gray-500">Failed (24h)</div>
+    </div>
+    <div class="bg-white rounded-lg p-4 border shadow-sm">
+        <div class="text-2xl font-bold text-red-600">{{ stats.failed_7d }}</div>
+        <div class="text-sm text-gray-500">Failed (7 days)</div>
+    </div>
+    <div class="bg-white rounded-lg p-4 border shadow-sm">
+        <div class="text-2xl font-bold {% if stats.failure_rate > 10 %}text-red-600{% elif stats.failure_rate > 5 %}text-yellow-600{% else %}text-green-600{% endif %}">
+            {{ "%.1f"|format(stats.failure_rate) }}%
+        </div>
+        <div class="text-sm text-gray-500">Failure Rate (24h)</div>
+    </div>
+    <div class="bg-white rounded-lg p-4 border shadow-sm">
+        <div class="text-2xl font-bold text-gray-900">{{ stats.total_sent_24h }}</div>
+        <div class="text-sm text-gray-500">Total Sent (24h)</div>
+    </div>
+</div>
+
+<!-- Error Type Breakdown -->
+{% if error_types %}
+<div class="mb-6 bg-white rounded-lg p-4 border shadow-sm">
+    <h3 class="text-sm font-medium text-gray-700 mb-3">Error Types (24h)</h3>
+    <div class="flex flex-wrap gap-2">
+        {% for error_type, count in error_types.items() %}
+        <span class="px-3 py-1 rounded-full text-sm
+            {% if error_type == 'timeout' %}bg-yellow-100 text-yellow-800
+            {% elif error_type == 'mac_server' %}bg-red-100 text-red-800
+            {% elif error_type == 'openai' %}bg-purple-100 text-purple-800
+            {% elif error_type == 'cancelled' %}bg-gray-100 text-gray-800
+            {% else %}bg-blue-100 text-blue-800{% endif %}">
+            {{ error_type }}: {{ count }}
+        </span>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Filters -->
+<div class="mb-6 flex flex-wrap gap-4">
+    <form method="GET" action="/admin/errors" class="flex flex-wrap gap-4 w-full">
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">From Date</label>
+            <input type="date"
+                   name="date_from"
+                   value="{{ date_from or '' }}"
+                   class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">To Date</label>
+            <input type="date"
+                   name="date_to"
+                   value="{{ date_to or '' }}"
+                   class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">Error Type</label>
+            <select name="error_type" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="">All Types</option>
+                <option value="timeout" {% if filter_error_type == 'timeout' %}selected{% endif %}>Timeout</option>
+                <option value="mac_server" {% if filter_error_type == 'mac_server' %}selected{% endif %}>Mac Server</option>
+                <option value="openai" {% if filter_error_type == 'openai' %}selected{% endif %}>OpenAI</option>
+                <option value="validation" {% if filter_error_type == 'validation' %}selected{% endif %}>Validation</option>
+                <option value="cancelled" {% if filter_error_type == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                <option value="other" {% if filter_error_type == 'other' %}selected{% endif %}>Other</option>
+            </select>
+        </div>
+        <div class="flex items-end gap-2">
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                Filter
+            </button>
+            {% if date_from or date_to or filter_error_type %}
+            <a href="/admin/errors" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                Clear
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Bulk Actions -->
+{% if errors %}
+<div class="mb-4 flex gap-2">
+    <form method="POST" action="/admin/errors/retry-all" class="inline">
+        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
+            Retry All (Last 24h)
+        </button>
+    </form>
+</div>
+{% endif %}
+
+<!-- Errors Table -->
+<div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scheduled</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Error Message</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for error in errors %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ error.id }}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">{{ error.name or 'Unknown' }}</div>
+                    <div class="text-xs text-gray-500">{{ error.phone_number }}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ error.scheduled_local }}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 py-1 text-xs font-medium rounded-full
+                        {% if error.error_type == 'timeout' %}bg-yellow-100 text-yellow-800
+                        {% elif error.error_type == 'mac_server' %}bg-red-100 text-red-800
+                        {% elif error.error_type == 'openai' %}bg-purple-100 text-purple-800
+                        {% elif error.error_type == 'cancelled' %}bg-gray-100 text-gray-800
+                        {% else %}bg-blue-100 text-blue-800{% endif %}">
+                        {{ error.error_type }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title="{{ error.error_message }}">
+                    {{ error.error_message[:60] if error.error_message else 'No error message' }}{% if error.error_message and error.error_message|length > 60 %}...{% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    <form method="POST" action="/admin/errors/{{ error.id }}/retry" class="inline">
+                        <button type="submit" class="text-green-600 hover:text-green-800 mr-3">Retry</button>
+                    </form>
+                    <a href="/admin/users/{{ error.user_id }}" class="text-blue-600 hover:text-blue-800">View User</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                    No failed messages found
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="mt-6 flex justify-center space-x-2">
+    {% if page > 1 %}
+    <a href="/admin/errors?page={{ page - 1 }}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if filter_error_type %}&error_type={{ filter_error_type }}{% endif %}"
+       class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+        Previous
+    </a>
+    {% endif %}
+
+    <span class="px-4 py-2 text-gray-700">
+        Page {{ page }} of {{ total_pages }}
+    </span>
+
+    {% if page < total_pages %}
+    <a href="/admin/errors?page={{ page + 1 }}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if filter_error_type %}&error_type={{ filter_error_type }}{% endif %}"
+       class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+        Next
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

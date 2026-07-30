@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Message Queue{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Message Queue</h1>
+    <p class="text-gray-500 mt-1">View and manage scheduled messages</p>
+</div>
+
+<!-- Filter Tabs -->
+<div class="mb-6 flex space-x-2">
+    <a href="/admin/queue?status=pending"
+       class="px-4 py-2 rounded-lg {% if filter_status == 'pending' %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors">
+        Pending ({{ counts.pending }})
+    </a>
+    <a href="/admin/queue?status=sent"
+       class="px-4 py-2 rounded-lg {% if filter_status == 'sent' %}bg-green-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors">
+        Sent ({{ counts.sent }})
+    </a>
+    <a href="/admin/queue?status=failed"
+       class="px-4 py-2 rounded-lg {% if filter_status == 'failed' %}bg-red-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors">
+        Failed ({{ counts.failed }})
+    </a>
+    <a href="/admin/queue"
+       class="px-4 py-2 rounded-lg {% if not filter_status %}bg-gray-800 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors">
+        All
+    </a>
+</div>
+
+<!-- Messages Table -->
+<div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scheduled</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for msg in messages %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ msg.id }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ msg.name or 'Unknown' }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ msg.phone_number }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ msg.scheduled_local }}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 py-1 text-xs font-medium rounded-full
+                        {% if msg.status == 'pending' %}bg-blue-100 text-blue-700
+                        {% elif msg.status == 'sent' %}bg-green-100 text-green-700
+                        {% else %}bg-red-100 text-red-700{% endif %}">
+                        {{ msg.status }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    {% if msg.status == 'pending' %}
+                    <form method="POST" action="/admin/queue/send/{{ msg.id }}" class="inline">
+                        <button type="submit" class="text-green-600 hover:text-green-800 mr-3">Send Now</button>
+                    </form>
+                    <form method="POST" action="/admin/queue/cancel/{{ msg.id }}" class="inline">
+                        <button type="submit" class="text-red-600 hover:text-red-800">Cancel</button>
+                    </form>
+                    {% elif msg.status == 'failed' %}
+                    <span class="text-gray-400 text-xs" title="{{ msg.error_message }}">
+                        {{ msg.error_message[:30] }}...
+                    </span>
+                    {% else %}
+                    <span class="text-gray-400">{{ msg.sent_at }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                    No messages found
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

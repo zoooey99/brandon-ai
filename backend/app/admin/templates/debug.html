@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+
+{% block title %}Debug / Prompt Testing{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Debug / Prompt Testing</h1>
+    <p class="text-gray-500 mt-1">Test prompts with real user data and see exactly what gets sent to the AI</p>
+</div>
+
+<!-- User Selection -->
+<div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+    <div class="flex items-end gap-4">
+        <div class="flex-1">
+            <label for="user-select" class="block text-sm font-medium text-gray-700 mb-2">Select User</label>
+            <select id="user-select" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="">-- Select a user --</option>
+                {% for user in users %}
+                <option value="{{ user.id }}" {% if selected_user and selected_user.id == user.id %}selected{% endif %}>
+                    {{ user.name }} ({{ user.phone_number }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <button onclick="loadUserContext()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            Load Context
+        </button>
+    </div>
+</div>
+
+{% if selected_user %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- User Context -->
+    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div class="px-6 py-4 border-b bg-gray-50">
+            <h2 class="text-lg font-semibold text-gray-900">User Context</h2>
+        </div>
+        <div class="p-6">
+            <dl class="space-y-3">
+                <div class="flex">
+                    <dt class="w-32 text-sm font-medium text-gray-500">Name:</dt>
+                    <dd class="text-sm text-gray-900" id="ctx-name">{{ selected_user.name }}</dd>
+                </div>
+                <div class="flex">
+                    <dt class="w-32 text-sm font-medium text-gray-500">Phone:</dt>
+                    <dd class="text-sm text-gray-900" id="ctx-phone">{{ selected_user.phone_number }}</dd>
+                </div>
+                <div class="flex">
+                    <dt class="w-32 text-sm font-medium text-gray-500">Goal:</dt>
+                    <dd class="text-sm text-gray-900" id="ctx-goal">{{ profile.goal if profile else 'Not set' }}</dd>
+                </div>
+                <div class="flex">
+                    <dt class="w-32 text-sm font-medium text-gray-500">Experience:</dt>
+                    <dd class="text-sm text-gray-900" id="ctx-experience">{{ profile.experience if profile else 'Not set' }}</dd>
+                </div>
+                <div class="flex">
+                    <dt class="w-32 text-sm font-medium text-gray-500">Equipment:</dt>
+                    <dd class="text-sm text-gray-900" id="ctx-equipment">{{ profile.equipment | join(', ') if profile and profile.equipment else 'None' }}</dd>
+                </div>
+                <div class="flex">
+                    <dt class="w-32 text-sm font-medium text-gray-500">Split:</dt>
+                    <dd class="text-sm text-gray-900" id="ctx-split">{{ profile.split if profile else 'Not set' }}</dd>
+                </div>
+                <div class="flex">
+                    <dt class="w-32 text-sm font-medium text-gray-500">Workout Days:</dt>
+                    <dd class="text-sm text-gray-900" id="ctx-workout-days">{{ profile.workout_days | join(', ') if profile and profile.workout_days else 'Not set' }}</dd>
+                </div>
+                <div class="flex">
+                    <dt class="w-32 text-sm font-medium text-gray-500">Notes:</dt>
+                    <dd class="text-sm text-gray-900" id="ctx-notes">{{ profile.notes if profile and profile.notes else 'None' }}</dd>
+                </div>
+                <div class="flex">
+                    <dt class="w-32 text-sm font-medium text-gray-500">Today's Workout:</dt>
+                    <dd class="text-sm text-gray-900" id="ctx-workout">{{ workout_summary or 'No workout scheduled' }}</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    <!-- Recent Messages -->
+    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div class="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
+            <h2 class="text-lg font-semibold text-gray-900">Recent Messages</h2>
+            <span class="text-sm text-gray-500">Last {{ recent_messages | length }} messages</span>
+        </div>
+        <div class="p-4 max-h-80 overflow-y-auto">
+            {% if recent_messages %}
+            <div class="space-y-3">
+                {% for msg in recent_messages %}
+                <div class="{% if msg.direction == 'inbound' %}bg-blue-50 border-blue-200{% else %}bg-gray-50 border-gray-200{% endif %} border rounded-lg p-3">
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="text-xs font-medium {% if msg.direction == 'inbound' %}text-blue-700{% else %}text-gray-700{% endif %}">
+                            {{ 'User' if msg.direction == 'inbound' else 'Brandon' }}
+                        </span>
+                        <span class="text-xs text-gray-400">{{ msg.created_at[:16] if msg.created_at else '' }}</span>
+                    </div>
+                    <p class="text-sm text-gray-800">{{ msg.content }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-500 text-center py-8">No recent messages</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Test Message Input -->
+<div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">Test Message</h2>
+    <div class="flex gap-4">
+        <input
+            type="text"
+            id="test-message"
+            class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Enter a test message from the user..."
+            value="{{ test_message or '' }}"
+        >
+        <button onclick="previewPrompt()" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+            Preview Prompt
+        </button>
+        <button onclick="generateResponse()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+            Preview & Generate
+        </button>
+    </div>
+</div>
+
+<!-- Prompt Preview -->
+<div class="bg-white rounded-xl shadow-sm border overflow-hidden" id="prompt-preview-section" {% if not filled_prompt %}style="display: none;"{% endif %}>
+    <div class="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
+        <h2 class="text-lg font-semibold text-gray-900">Full Prompt Preview</h2>
+        <div class="flex items-center gap-4">
+            <span class="text-sm text-gray-500">
+                <span id="char-count">{{ filled_prompt | length if filled_prompt else 0 }}</span> chars
+            </span>
+            <span class="text-sm text-gray-500">
+                ~<span id="token-estimate">{{ ((filled_prompt | length) / 4) | int if filled_prompt else 0 }}</span> tokens (est.)
+            </span>
+        </div>
+    </div>
+    <div class="p-6">
+        <!-- System Message -->
+        <div class="mb-4">
+            <div class="text-xs font-medium text-purple-600 mb-1">SYSTEM MESSAGE</div>
+            <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 text-sm text-gray-800 font-mono whitespace-pre-wrap">You are Brandon, an enthusiastic and supportive fitness coach. Keep responses conversational, encouraging, and concise (1-3 sentences). Use the user's name occasionally. Ask follow-up questions to engage them.</div>
+        </div>
+
+        <!-- User Prompt -->
+        <div>
+            <div class="text-xs font-medium text-blue-600 mb-1">USER PROMPT (filled template)</div>
+            <div id="prompt-content" class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-800 font-mono whitespace-pre-wrap max-h-96 overflow-y-auto">{{ filled_prompt or '' }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Generated Response -->
+{% if generated_response %}
+<div class="bg-white rounded-xl shadow-sm border overflow-hidden mt-6">
+    <div class="px-6 py-4 border-b bg-green-50 flex justify-between items-center">
+        <h2 class="text-lg font-semibold text-gray-900">Generated Response</h2>
+        <div class="flex items-center gap-4 text-sm text-gray-500">
+            {% if generation_stats %}
+            <span>{{ generation_stats.prompt_tokens }} prompt + {{ generation_stats.completion_tokens }} completion = {{ generation_stats.total_tokens }} tokens</span>
+            <span>{{ generation_stats.latency_ms }}ms</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="p-6">
+        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div class="text-xs font-medium text-green-700 mb-2">BRANDON'S RESPONSE</div>
+            <p class="text-gray-800">{{ generated_response }}</p>
+        </div>
+        <p class="mt-3 text-xs text-gray-500">This response was generated but NOT sent. It's for testing purposes only.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Test Plan Generation Section -->
+<div class="bg-white rounded-xl shadow-sm border overflow-hidden mt-6">
+    <div class="px-6 py-4 border-b bg-purple-50">
+        <h2 class="text-lg font-semibold text-gray-900">Test Plan Generation</h2>
+    </div>
+    <div id="plan-section-content">
+        <div class="p-6">
+            <p class="text-sm text-gray-500 mb-4">Test the plan generation flow with custom profile data. Fields are pre-filled from the selected user.</p>
+
+            <form id="plan-gen-form" class="space-y-4">
+                <!-- Row 1: Name, Age, Sex -->
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                        <input type="text" name="plan_name" id="plan-name" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value="{{ selected_user.name if selected_user else '' }}">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                        <input type="number" name="plan_age" id="plan-age" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value="{{ profile.age if profile and profile.age else '' }}" placeholder="Optional">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Sex</label>
+                        <select name="plan_sex" id="plan-sex" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                            <option value="">Not specified</option>
+                            <option value="male" {% if profile and profile.sex == 'male' %}selected{% endif %}>Male</option>
+                            <option value="female" {% if profile and profile.sex == 'female' %}selected{% endif %}>Female</option>
+                            <option value="other" {% if profile and profile.sex == 'other' %}selected{% endif %}>Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 2: Goal -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Goal</label>
+                    <input type="text" name="plan_goal" id="plan-goal" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value="{{ profile.goal if profile else '' }}" placeholder="e.g., Build muscle, lose weight">
+                </div>
+
+                <!-- Row 3: Experience, Split -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Experience</label>
+                        <select name="plan_experience" id="plan-experience" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                            <option value="">Not specified</option>
+                            <option value="beginner" {% if profile and profile.experience == 'beginner' %}selected{% endif %}>Beginner</option>
+                            <option value="less_than_1_year" {% if profile and profile.experience == 'less_than_1_year' %}selected{% endif %}>Less than 1 year</option>
+                            <option value="1_2_years" {% if profile and profile.experience == '1_2_years' %}selected{% endif %}>1-2 years</option>
+                            <option value="2_4_years" {% if profile and profile.experience == '2_4_years' %}selected{% endif %}>2-4 years</option>
+                            <option value="4_plus_years" {% if profile and profile.experience == '4_plus_years' %}selected{% endif %}>4+ years</option>
+                            <option value="intermediate" {% if profile and profile.experience == 'intermediate' %}selected{% endif %}>Intermediate</option>
+                            <option value="advanced" {% if profile and profile.experience == 'advanced' %}selected{% endif %}>Advanced</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Split</label>
+                        <select name="plan_split" id="plan-split" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                            <option value="">Not specified</option>
+                            <option value="push_pull_legs" {% if profile and profile.split == 'push_pull_legs' %}selected{% endif %}>Push/Pull/Legs</option>
+                            <option value="upper_lower" {% if profile and profile.split == 'upper_lower' %}selected{% endif %}>Upper/Lower</option>
+                            <option value="full_body" {% if profile and profile.split == 'full_body' %}selected{% endif %}>Full Body</option>
+                            <option value="bro_split" {% if profile and profile.split == 'bro_split' %}selected{% endif %}>Bro Split</option>
+                            <option value="legs_only" {% if profile and profile.split == 'legs_only' %}selected{% endif %}>Legs Only</option>
+                            <option value="custom" {% if profile and profile.split == 'custom' %}selected{% endif %}>Custom</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 4: Equipment -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Equipment (comma-separated)</label>
+                    <input type="text" name="plan_equipment" id="plan-equipment" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value="{{ profile.equipment | join(', ') if profile and profile.equipment else '' }}" placeholder="e.g., dumbbells, barbell, bench">
+                </div>
+
+                <!-- Row 5: Workout Days -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Workout Days</label>
+                    <div class="flex gap-2">
+                        {% set day_values = ['M', 'T', 'W', 'Th', 'F', 'S', 'Su'] %}
+                        {% set day_labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+                        {% for i in range(7) %}
+                        <label class="flex items-center">
+                            <input type="checkbox" name="plan_days" value="{{ day_values[i] }}" class="plan-day-checkbox rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                {% if profile and profile.workout_days and day_values[i] in profile.workout_days %}checked{% endif %}>
+                            <span class="ml-1 text-sm text-gray-600">{{ day_labels[i] }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Row 6: Notes -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea name="plan_notes" id="plan-notes" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Any additional context...">{{ profile.notes if profile and profile.notes else '' }}</textarea>
+                </div>
+
+                <!-- Generate Button -->
+                <div class="flex gap-3">
+                    <button type="button" onclick="generatePlan()" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                        Generate Plan
+                    </button>
+                    <span id="plan-loading" class="hidden text-sm text-gray-500 py-2">
+                        <svg class="inline animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Generating...
+                    </span>
+                </div>
+            </form>
+
+            <!-- Results Panel -->
+            <div id="plan-results" class="hidden mt-6">
+                <div class="border-t pt-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-sm font-semibold text-gray-900">Generated Plan</h3>
+                        <div id="plan-stats" class="text-xs text-gray-500"></div>
+                    </div>
+                    <pre id="plan-output" class="bg-gray-900 text-green-400 rounded-lg p-4 text-sm overflow-x-auto max-h-96 overflow-y-auto"></pre>
+                </div>
+            </div>
+
+            <!-- Error Panel -->
+            <div id="plan-error" class="hidden mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
+                <p class="text-sm text-red-700" id="plan-error-text"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- No User Selected State -->
+<div class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-12 text-center">
+    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+    </svg>
+    <h3 class="mt-4 text-lg font-medium text-gray-900">Select a user to start</h3>
+    <p class="mt-2 text-sm text-gray-500">Choose a user from the dropdown above to view their context and test prompts.</p>
+</div>
+{% endif %}
+
+<script>
+    function loadUserContext() {
+        const userId = document.getElementById('user-select').value;
+        if (!userId) {
+            alert('Please select a user');
+            return;
+        }
+        window.location.href = `/admin/debug?user_id=${userId}`;
+    }
+
+    function previewPrompt() {
+        submitDebugForm('/admin/debug/preview');
+    }
+
+    function generateResponse() {
+        submitDebugForm('/admin/debug/generate');
+    }
+
+    function submitDebugForm(action) {
+        const userId = document.getElementById('user-select').value;
+        const testMessage = document.getElementById('test-message').value;
+
+        if (!userId) {
+            alert('Please select a user first');
+            return;
+        }
+        if (!testMessage) {
+            alert('Please enter a test message');
+            return;
+        }
+
+        // Submit form
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = action;
+
+        const userInput = document.createElement('input');
+        userInput.type = 'hidden';
+        userInput.name = 'user_id';
+        userInput.value = userId;
+        form.appendChild(userInput);
+
+        const msgInput = document.createElement('input');
+        msgInput.type = 'hidden';
+        msgInput.name = 'test_message';
+        msgInput.value = testMessage;
+        form.appendChild(msgInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    // Enter key submits generate (since that's the primary action)
+    document.getElementById('test-message')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            generateResponse();
+        }
+    });
+
+    // Plan Generation Functions
+    async function generatePlan() {
+        const loading = document.getElementById('plan-loading');
+        const results = document.getElementById('plan-results');
+        const error = document.getElementById('plan-error');
+        const output = document.getElementById('plan-output');
+        const stats = document.getElementById('plan-stats');
+
+        // Get form values
+        const name = document.getElementById('plan-name').value;
+        const age = document.getElementById('plan-age').value;
+        const sex = document.getElementById('plan-sex').value;
+        const goal = document.getElementById('plan-goal').value;
+        const experience = document.getElementById('plan-experience').value;
+        const equipment = document.getElementById('plan-equipment').value;
+        const split = document.getElementById('plan-split').value;
+        const notes = document.getElementById('plan-notes').value;
+
+        // Get selected days
+        const dayCheckboxes = document.querySelectorAll('.plan-day-checkbox:checked');
+        const workoutDays = Array.from(dayCheckboxes).map(cb => cb.value);
+
+        if (!goal) {
+            alert('Please enter a goal');
+            return;
+        }
+
+        // Show loading, hide results/error
+        loading.classList.remove('hidden');
+        results.classList.add('hidden');
+        error.classList.add('hidden');
+
+        const startTime = Date.now();
+
+        try {
+            const response = await fetch('/admin/debug/generate-plan', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    name: name || 'User',
+                    age: age ? parseInt(age) : null,
+                    sex: sex || null,
+                    goal: goal,
+                    experience: experience || null,
+                    equipment: equipment ? equipment.split(',').map(e => e.trim()).filter(e => e) : [],
+                    split: split || null,
+                    workoutDays: workoutDays,
+                    notes: notes || null
+                })
+            });
+
+            const data = await response.json();
+            const latency = ((Date.now() - startTime) / 1000).toFixed(1);
+
+            if (response.ok && data.plan) {
+                output.textContent = JSON.stringify(data.plan, null, 2);
+                stats.textContent = `Model: ${data.model || 'unknown'} | Latency: ${latency}s`;
+                results.classList.remove('hidden');
+            } else {
+                document.getElementById('plan-error-text').textContent = data.detail || data.error || 'Failed to generate plan';
+                error.classList.remove('hidden');
+            }
+        } catch (e) {
+            document.getElementById('plan-error-text').textContent = 'Network error: ' + e.message;
+            error.classList.remove('hidden');
+        } finally {
+            loading.classList.add('hidden');
+        }
+    }
+</script>
+{% endblock %}

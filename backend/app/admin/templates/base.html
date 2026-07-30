@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin{% endblock %} - Brandon</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; }
+        .nav-link {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #64748b;
+            transition: all 0.15s ease;
+        }
+        .nav-link:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+        .nav-link.active {
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    {% if authenticated %}
+    <nav class="bg-white border-b border-slate-200/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-14">
+                <div class="flex items-center gap-8">
+                    <a href="/admin/" class="text-lg font-semibold text-slate-900 tracking-tight">Brandon</a>
+                    <div class="flex items-center gap-1">
+                        <a href="/admin/" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+                            Dashboard
+                        </a>
+                        <a href="/admin/users" class="nav-link {% if active_page == 'users' %}active{% endif %}">
+                            Users
+                        </a>
+                        <a href="/admin/workouts-today" class="nav-link {% if active_page == 'workouts-today' %}active{% endif %}">
+                            Workouts
+                        </a>
+                        <a href="/admin/queue" class="nav-link {% if active_page == 'queue' %}active{% endif %}">
+                            Queue
+                        </a>
+                        <a href="/admin/errors" class="nav-link {% if active_page == 'errors' %}active{% endif %}">
+                            Errors
+                        </a>
+                        <a href="/admin/prompts" class="nav-link {% if active_page == 'prompts' %}active{% endif %}">
+                            Prompts
+                        </a>
+                        <a href="/admin/daily-test" class="nav-link {% if active_page == 'daily-test' %}active{% endif %}">
+                            Daily Test
+                        </a>
+                        <a href="/admin/actions" class="nav-link {% if active_page == 'actions' %}active{% endif %}">
+                            Actions
+                        </a>
+                        <a href="/admin/debug" class="nav-link {% if active_page == 'debug' %}active{% endif %}">
+                            Debug
+                        </a>
+                        <a href="/admin/agent-tester" class="nav-link {% if active_page == 'agent-tester' %}active{% endif %}">
+                            Agent Tester
+                        </a>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <form action="/admin/set-timezone" method="post" class="flex items-center">
+                        <select name="timezone" onchange="this.form.submit()" class="text-xs border border-slate-200 rounded px-2 py-1 text-slate-500 bg-white cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-300">
+                            <option value="America/New_York">Eastern</option>
+                            <option value="America/Chicago">Central</option>
+                            <option value="America/Denver">Mountain</option>
+                            <option value="America/Los_Angeles">Pacific</option>
+                        </select>
+                    </form>
+                    <a href="/admin/logout" class="nav-link text-slate-400 hover:text-slate-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <script>
+    (function() {
+        var m = document.cookie.match(/(?:^|;\s*)brandon_admin_tz=([^;]*)/);
+        var tz = m ? decodeURIComponent(m[1]) : 'America/Chicago';
+        var sel = document.querySelector('select[name="timezone"]');
+        if (sel) sel.value = tz;
+    })();
+    </script>
+    {% endif %}
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% if flash_message %}
+        <div class="mb-6 p-4 rounded-lg {% if flash_type == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+            {{ flash_message }}
+        </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="border-t border-slate-200/60 mt-auto py-3">
+        <div class="max-w-7xl mx-auto px-4 text-center text-slate-400 text-xs">
+            Brandon Admin
+        </div>
+    </footer>
+</body>
+</html>

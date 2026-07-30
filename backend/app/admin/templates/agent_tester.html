@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+
+{% block title %}Agent Tester{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Agent Tester</h1>
+    <p class="text-gray-500 mt-1">Run the full agent loop and see every step — LLM calls, tool calls, acks, and final response</p>
+</div>
+
+<!-- User Selection -->
+<div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+    <div class="flex items-end gap-4">
+        <div class="flex-1">
+            <label for="user-select" class="block text-sm font-medium text-gray-700 mb-2">Select User</label>
+            <select id="user-select" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="">-- Select a user --</option>
+                {% for user in users %}
+                <option value="{{ user.id }}" {% if selected_user and selected_user.id == user.id %}selected{% endif %}>
+                    {{ user.name }} ({{ user.phone_number }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <button onclick="loadUser()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            Load Context
+        </button>
+    </div>
+</div>
+
+{% if selected_user %}
+<!-- User Context + Recent Messages -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div class="px-6 py-4 border-b bg-gray-50">
+            <h2 class="text-lg font-semibold text-gray-900">User Context</h2>
+        </div>
+        <div class="p-6">
+            <dl class="space-y-2">
+                {% set fields = [
+                    ("Name", profile.name if profile else "N/A"),
+                    ("Phone", profile.phone if profile else "N/A"),
+                    ("Goal", profile.goal if profile else "N/A"),
+                    ("Experience", profile.experience if profile else "N/A"),
+                    ("Equipment", profile.equipment|join(", ") if profile and profile.equipment else "None"),
+                    ("Split", profile.split if profile else "N/A"),
+                    ("Timezone", profile.timezone if profile else "N/A"),
+                ] %}
+                {% for label, value in fields %}
+                <div class="flex">
+                    <dt class="w-28 text-sm font-medium text-gray-500">{{ label }}:</dt>
+                    <dd class="text-sm text-gray-900">{{ value }}</dd>
+                </div>
+                {% endfor %}
+            </dl>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div class="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
+            <h2 class="text-lg font-semibold text-gray-900">Recent Messages</h2>
+            <span class="text-sm text-gray-500">Last {{ recent_messages|length }}</span>
+        </div>
+        <div class="p-4 max-h-72 overflow-y-auto">
+            {% if recent_messages %}
+            <div class="space-y-2">
+                {% for msg in recent_messages %}
+                <div class="{% if msg.direction == 'inbound' %}bg-blue-50 border-blue-200{% else %}bg-gray-50 border-gray-200{% endif %} border rounded-lg p-2.5">
+                    <div class="flex justify-between items-start mb-0.5">
+                        <span class="text-xs font-medium {% if msg.direction == 'inbound' %}text-blue-700{% else %}text-gray-700{% endif %}">
+                            {{ 'User' if msg.direction == 'inbound' else 'Brandon' }}
+                        </span>
+                        <span class="text-xs text-gray-400">{{ msg.created_at[:16] if msg.created_at else '' }}</span>
+                    </div>
+                    <p class="text-sm text-gray-800">{{ msg.content[:200] }}{% if msg.content|length > 200 %}...{% endif %}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-500 text-center py-6">No recent messages</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Test Message Input -->
+<div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">Send Test Message</h2>
+    <form id="agent-form" method="POST" action="/admin/agent-tester/run">
+        <input type="hidden" name="user_id" value="{{ selected_user.id }}">
+        <div class="flex gap-4">
+            <input
+                type="text"
+                name="test_message"
+                id="test-message"
+                class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Type a message as this user..."
+                value="{{ test_message or '' }}"
+            >
+            <button type="submit" id="run-btn" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                <span id="run-text">Run Agent</span>
+                <svg id="run-spinner" class="hidden animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </button>
+        </div>
+        <p class="mt-2 text-xs text-gray-400">Dry run only — nothing is saved to the database or sent via iMessage</p>
+    </form>
+</div>
+
+{% if trace %}
+<!-- Agent Run Trace -->
+<div class="bg-white rounded-xl shadow-sm border overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b bg-gray-50">
+        <h2 class="text-lg font-semibold text-gray-900">Agent Run Trace</h2>
+    </div>
+    <div class="p-6">
+        <div class="relative">
+            <!-- Vertical line -->
+            <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+
+            <div class="space-y-4">
+            {% for step in trace %}
+                {% if step.type == "system_prompt" %}
+                <!-- System Prompt -->
+                <div class="relative pl-10">
+                    <div class="absolute left-2.5 w-3 h-3 rounded-full bg-purple-400 border-2 border-white shadow"></div>
+                    <details class="bg-purple-50 border border-purple-200 rounded-lg overflow-hidden">
+                        <summary class="px-4 py-3 cursor-pointer hover:bg-purple-100 transition-colors">
+                            <span class="text-sm font-semibold text-purple-800">SYSTEM PROMPT</span>
+                            <span class="text-xs text-purple-500 ml-2">{{ step.content|length|string + " chars" }} · ~{{ (step.content|length / 4)|int }} tokens (est.)</span>
+                        </summary>
+                        <div class="px-4 pb-3 border-t border-purple-200">
+                            <pre class="text-xs text-gray-700 whitespace-pre-wrap mt-2 max-h-96 overflow-y-auto font-mono">{{ step.content }}</pre>
+                        </div>
+                    </details>
+                </div>
+
+                {% elif step.type == "history" %}
+                <!-- Conversation History -->
+                <div class="relative pl-10">
+                    <div class="absolute left-2.5 w-3 h-3 rounded-full bg-purple-400 border-2 border-white shadow"></div>
+                    <details class="bg-purple-50 border border-purple-200 rounded-lg overflow-hidden">
+                        <summary class="px-4 py-3 cursor-pointer hover:bg-purple-100 transition-colors">
+                            <span class="text-sm font-semibold text-purple-800">CONVERSATION HISTORY</span>
+                            <span class="text-xs text-purple-500 ml-2">{{ step.message_count }} messages</span>
+                        </summary>
+                        <div class="px-4 pb-3 border-t border-purple-200 space-y-2 mt-2">
+                            {% for msg in step.messages %}
+                            <div class="text-xs">
+                                <span class="font-semibold {% if msg.role == 'user' %}text-blue-600{% elif msg.role == 'assistant' %}text-green-600{% else %}text-purple-600{% endif %}">{{ msg.role|upper }}:</span>
+                                <span class="text-gray-700">{{ msg.content[:300] }}{% if msg.content|length > 300 %}...{% endif %}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </details>
+                </div>
+
+                {% elif step.type == "user_message" %}
+                <!-- User Message -->
+                <div class="relative pl-10">
+                    <div class="absolute left-2.5 w-3 h-3 rounded-full bg-blue-400 border-2 border-white shadow"></div>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                        <span class="text-sm font-semibold text-blue-800">USER MESSAGE</span>
+                        <p class="text-sm text-gray-800 mt-1">{{ step.content }}</p>
+                    </div>
+                </div>
+
+                {% elif step.type == "llm_request" %}
+                <!-- LLM Request -->
+                <div class="relative pl-10">
+                    <div class="absolute left-2.5 w-3 h-3 rounded-full bg-slate-400 border-2 border-white shadow"></div>
+                    <div class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
+                        <span class="text-sm font-semibold text-slate-700">LLM CALL</span>
+                        <span class="text-xs text-slate-500 ml-2">Round {{ step.round }}</span>
+                        <div class="text-xs text-slate-500 mt-1">
+                            Model: <span class="font-mono">{{ step.model }}</span> · {{ step.message_count }} messages
+                        </div>
+                    </div>
+                </div>
+
+                {% elif step.type == "llm_response" %}
+                <!-- LLM Response -->
+                <div class="relative pl-10">
+                    <div class="absolute left-2.5 w-3 h-3 rounded-full bg-slate-400 border-2 border-white shadow"></div>
+                    <div class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-sm font-semibold text-slate-700">LLM RESPONSE</span>
+                                <span class="text-xs text-slate-500 ml-2">Round {{ step.round }}</span>
+                            </div>
+                            <span class="text-xs text-slate-500">{{ step.latency_ms }}ms</span>
+                        </div>
+                        <div class="text-xs text-slate-500 mt-1">
+                            finish_reason: <span class="font-mono font-semibold {% if step.finish_reason == 'stop' %}text-green-600{% else %}text-orange-600{% endif %}">{{ step.finish_reason }}</span>
+                            · Tokens: {{ step.tokens.prompt }} prompt + {{ step.tokens.completion }} completion = {{ step.tokens.total }} total
+                        </div>
+                        {% if step.content %}
+                        <div class="mt-2 text-sm text-gray-700">
+                            <span class="text-xs font-medium text-slate-500">Text:</span> {{ step.content[:300] }}{% if step.content|length > 300 %}...{% endif %}
+                        </div>
+                        {% endif %}
+                        {% if step.tool_calls %}
+                        <div class="mt-2 text-xs text-slate-600">
+                            Tool calls:
+                            {% for tc in step.tool_calls %}
+                            <span class="font-mono bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded ml-1">{{ tc.name }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% elif step.type == "tool_ack" %}
+                <!-- Tool Acknowledgment -->
+                <div class="relative pl-10">
+                    <div class="absolute left-2.5 w-3 h-3 rounded-full bg-amber-400 border-2 border-white shadow"></div>
+                    <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                        <span class="text-sm font-semibold text-amber-800">TOOL ACK</span>
+                        <span class="text-xs text-amber-600 ml-2">Would be sent as iMessage</span>
+                        <p class="text-sm text-gray-800 mt-1 italic">"{{ step.text }}"</p>
+                    </div>
+                </div>
+
+                {% elif step.type == "tool_call" %}
+                <!-- Tool Call -->
+                <div class="relative pl-10">
+                    <div class="absolute left-2.5 w-3 h-3 rounded-full bg-orange-400 border-2 border-white shadow"></div>
+                    <div class="bg-orange-50 border border-orange-200 rounded-lg px-4 py-3">
+                        <span class="text-sm font-semibold text-orange-800">TOOL CALL</span>
+                        <span class="text-xs text-orange-500 ml-2">Round {{ step.round }}</span>
+                        <div class="mt-1">
+                            <span class="font-mono text-sm font-semibold text-orange-700">{{ step.name }}</span>
+                            <span class="text-xs text-gray-500">({{ step.args }})</span>
+                        </div>
+                    </div>
+                </div>
+
+                {% elif step.type == "tool_result" %}
+                <!-- Tool Result -->
+                <div class="relative pl-10">
+                    <div class="absolute left-2.5 w-3 h-3 rounded-full bg-orange-300 border-2 border-white shadow"></div>
+                    <details class="bg-orange-50 border border-orange-200 rounded-lg overflow-hidden">
+                        <summary class="px-4 py-3 cursor-pointer hover:bg-orange-100 transition-colors">
+                            <span class="text-sm font-semibold text-orange-700">TOOL RESULT</span>
+                            <span class="text-xs text-orange-500 ml-2">{{ step.name }}</span>
+                        </summary>
+                        <div class="px-4 pb-3 border-t border-orange-200">
+                            <pre class="text-xs text-gray-700 whitespace-pre-wrap mt-2 max-h-64 overflow-y-auto font-mono">{{ step.result }}</pre>
+                        </div>
+                    </details>
+                </div>
+
+                {% elif step.type == "message_injected" %}
+                <!-- Mid-Run Message Injection -->
+                <div class="relative pl-10">
+                    <div class="absolute left-2.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow"></div>
+                    <div class="bg-blue-100 border border-blue-300 rounded-lg px-4 py-3">
+                        <span class="text-sm font-semibold text-blue-800">MESSAGE INJECTED</span>
+                        <span class="text-xs text-blue-600 ml-2">{{ step.count }} new message(s) mid-run</span>
+                        <p class="text-sm text-gray-800 mt-1">{{ step.text }}</p>
+                    </div>
+                </div>
+
+                {% elif step.type == "final_response" %}
+                <!-- Final Response -->
+                <div class="relative pl-10">
+                    <div class="absolute left-2.5 w-3 h-3 rounded-full bg-green-500 border-2 border-white shadow"></div>
+                    <div class="bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+                        <span class="text-sm font-semibold text-green-800">FINAL RESPONSE</span>
+                        <span class="text-xs text-green-600 ml-2">Would be sent as iMessage</span>
+                        <p class="text-sm text-gray-800 mt-2">{{ step.text }}</p>
+                    </div>
+                </div>
+
+                {% elif step.type == "error" %}
+                <!-- Error -->
+                <div class="relative pl-10">
+                    <div class="absolute left-2.5 w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow"></div>
+                    <div class="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                        <span class="text-sm font-semibold text-red-800">ERROR</span>
+                        <p class="text-sm text-red-700 mt-1 font-mono">{{ step.message }}</p>
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+            </div>
+        </div>
+
+        <!-- Summary -->
+        {% set llm_responses = trace|selectattr("type", "equalto", "llm_response")|list %}
+        {% set tool_calls = trace|selectattr("type", "equalto", "tool_call")|list %}
+        {% set tool_acks = trace|selectattr("type", "equalto", "tool_ack")|list %}
+        {% set total_tokens = llm_responses|map(attribute="tokens.total")|sum %}
+        {% set total_latency = llm_responses|map(attribute="latency_ms")|sum %}
+
+        <div class="mt-6 pt-4 border-t border-gray-200">
+            <div class="flex flex-wrap gap-4 text-sm text-gray-600">
+                <span>{{ llm_responses|length }} round{{ "s" if llm_responses|length != 1 }}</span>
+                <span class="text-gray-300">·</span>
+                <span>{{ total_tokens }} total tokens</span>
+                <span class="text-gray-300">·</span>
+                <span>{{ total_latency }}ms total latency</span>
+                <span class="text-gray-300">·</span>
+                <span>{{ tool_calls|length }} tool call{{ "s" if tool_calls|length != 1 }}</span>
+                <span class="text-gray-300">·</span>
+                <span>{{ tool_acks|length }} ack{{ "s" if tool_acks|length != 1 }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<!-- No User Selected -->
+<div class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-12 text-center">
+    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+    </svg>
+    <h3 class="mt-4 text-lg font-medium text-gray-900">Select a user to start testing</h3>
+    <p class="mt-2 text-sm text-gray-500">Choose a user from the dropdown to load their context and run the agent.</p>
+</div>
+{% endif %}
+
+<script>
+    function loadUser() {
+        const userId = document.getElementById('user-select').value;
+        if (!userId) { alert('Please select a user'); return; }
+        window.location.href = `/admin/agent-tester?user_id=${userId}`;
+    }
+
+    // Show spinner on form submit
+    const form = document.getElementById('agent-form');
+    if (form) {
+        form.addEventListener('submit', function() {
+            const msg = document.getElementById('test-message').value;
+            if (!msg) { event.preventDefault(); alert('Please enter a test message'); return; }
+            document.getElementById('run-text').textContent = 'Running...';
+            document.getElementById('run-spinner').classList.remove('hidden');
+            document.getElementById('run-btn').disabled = true;
+            document.getElementById('run-btn').classList.add('opacity-50');
+        });
+
+        // Enter key submits
+        document.getElementById('test-message')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') { form.submit(); }
+        });
+    }
+</script>
+{% endblock %}

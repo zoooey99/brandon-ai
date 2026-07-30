@@ -1,0 +1,515 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ prompt_name }} - Prompts & Templates{% endblock %}
+
+{% block content %}
+<!-- Back Link -->
+<div class="mb-4">
+    <a href="/admin/prompts" class="text-blue-600 hover:text-blue-800 flex items-center">
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+        Back to Prompts & Templates
+    </a>
+</div>
+
+<!-- Draft Recovery Banner -->
+<div id="draft-banner" class="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 {% if not draft %}hidden{% endif %}">
+    <div class="flex justify-between items-center">
+        <div class="flex items-center">
+            <svg class="w-5 h-5 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <span class="text-sm text-yellow-800">
+                You have unsaved changes from <strong id="draft-time">{% if draft %}{{ draft.updated_at[:19] }}{% endif %}</strong>
+            </span>
+        </div>
+        <div class="flex space-x-2">
+            <button onclick="restoreDraft()" class="px-3 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700">
+                Restore
+            </button>
+            <button onclick="discardDraft()" class="px-3 py-1 bg-white text-yellow-700 text-sm rounded border border-yellow-300 hover:bg-yellow-100">
+                Discard
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Template Info Banner (only shown for templates) -->
+{% if prompt_info and prompt_info.type == 'template' %}
+<div class="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+    <div class="flex">
+        <svg class="w-5 h-5 text-amber-600 mr-3 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+        </svg>
+        <div class="text-sm text-amber-800">
+            <p class="font-semibold">This is a Template</p>
+            <p class="mt-1">Templates use static text with variable substitution. They do not use AI processing.</p>
+            {% if prompt_name == 'first_message' %}
+            <div class="mt-3 p-3 bg-amber-100 rounded border border-amber-300">
+                <p class="font-medium flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"/>
+                        <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z"/>
+                    </svg>
+                    Multi-Message Format
+                </p>
+                <p class="mt-1">Use <code class="px-1.5 py-0.5 bg-amber-200 rounded font-mono text-xs">---</code> to separate messages. Each section will be sent as a separate iMessage with a 1-second delay between them.</p>
+                <p class="mt-2 text-xs text-amber-700">Example: "Hello! ---Nice to meet you! ---Let's get started!" sends 3 messages.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="mb-8 flex justify-between items-start">
+    <div>
+        <div class="flex items-center space-x-3">
+            <h1 class="text-3xl font-bold text-gray-900">{{ prompt_name }}</h1>
+            {% if prompt_info and prompt_info.type == 'template' %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                Template
+            </span>
+            {% else %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                Prompt
+            </span>
+            {% endif %}
+        </div>
+        <p class="text-gray-500 mt-1">
+            {% if prompt_info %}
+            Version: <span class="font-medium text-purple-600">v{{ prompt_info.version }}</span>
+            | Updated: {{ prompt_info.updated_at[:10] if prompt_info.updated_at else 'Unknown' }}
+            | {{ prompt_info.char_count }} chars
+            {% endif %}
+        </p>
+    </div>
+    <div class="flex space-x-3">
+        <a href="/admin/prompts/{{ prompt_name }}/history" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+            View History
+        </a>
+    </div>
+</div>
+
+<!-- Model Selection (only shown for prompts, not templates) -->
+{% if not prompt_info or prompt_info.type != 'template' %}
+<div class="mb-6 bg-white rounded-xl shadow-sm border p-4">
+    <label for="model" class="block text-sm font-medium text-gray-700 mb-2">AI Model</label>
+    <select name="model" id="model-select" form="prompt-form" class="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+        <optgroup label="GPT-5 Series (Recommended)">
+            <option value="gpt-5-nano" {% if prompt_info and prompt_info.model == 'gpt-5-nano' %}selected{% endif %}>GPT-5 Nano (Fastest, Cheapest)</option>
+            <option value="gpt-5-mini" {% if prompt_info and prompt_info.model == 'gpt-5-mini' %}selected{% elif not prompt_info %}selected{% endif %}>GPT-5 Mini (Fast, Cost-efficient)</option>
+            <option value="gpt-5" {% if prompt_info and prompt_info.model == 'gpt-5' %}selected{% endif %}>GPT-5 (Reasoning)</option>
+            <option value="gpt-5.2" {% if prompt_info and prompt_info.model == 'gpt-5.2' %}selected{% endif %}>GPT-5.2 (Best for Coding)</option>
+            <option value="gpt-5.2-pro" {% if prompt_info and prompt_info.model == 'gpt-5.2-pro' %}selected{% endif %}>GPT-5.2 Pro (Smartest)</option>
+        </optgroup>
+        <optgroup label="GPT-4 Series">
+            <option value="gpt-4.1" {% if prompt_info and prompt_info.model == 'gpt-4.1' %}selected{% endif %}>GPT-4.1 (Non-reasoning)</option>
+            <option value="gpt-4o-mini" {% if prompt_info and prompt_info.model == 'gpt-4o-mini' %}selected{% endif %}>GPT-4o Mini (Legacy)</option>
+            <option value="gpt-4o" {% if prompt_info and prompt_info.model == 'gpt-4o' %}selected{% endif %}>GPT-4o (Legacy)</option>
+        </optgroup>
+    </select>
+    <p class="text-xs text-gray-500 mt-1">Model used when generating responses with this prompt. GPT-5 series recommended for most tasks.</p>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Editor -->
+    <div class="lg:col-span-2">
+        <form method="POST" action="/admin/prompts/{{ prompt_name }}" id="prompt-form">
+            <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div class="px-6 py-4 border-b flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-gray-900">
+                        {% if prompt_info and prompt_info.type == 'template' %}Template{% else %}Prompt{% endif %} Content
+                    </h2>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-500" id="char-count">{{ content|length }} chars</span>
+                        <span id="save-status" class="text-sm text-gray-400"></span>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <textarea
+                        name="content"
+                        id="prompt-content"
+                        rows="25"
+                        class="w-full font-mono text-sm border border-gray-300 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter {% if prompt_info and prompt_info.type == 'template' %}template{% else %}prompt{% endif %} content..."
+                    >{{ content }}</textarea>
+                </div>
+                <div class="px-6 py-4 border-t bg-gray-50 flex justify-between">
+                    <div class="flex space-x-3">
+                        <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            Save Changes
+                        </button>
+                        <button type="button" onclick="previewPrompt()" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                            Preview
+                        </button>
+                    </div>
+                    <button type="button" onclick="discardDraftAndReload()" id="discard-btn" class="px-4 py-2 text-gray-500 hover:text-gray-700 hidden">
+                        Discard Draft
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Variable Reference -->
+        <div class="bg-white rounded-xl shadow-sm border p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Variables</h3>
+            <p class="text-xs text-gray-500 mb-3">Click to insert at cursor position</p>
+            <div class="space-y-2 max-h-80 overflow-y-auto">
+                {% if prompt_name == 'first_message' %}
+                <!-- First Message Template Variables -->
+                <button type="button" onclick="insertVariable('{name}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{name}</code>
+                    <span class="text-gray-500 text-xs ml-2">User's name</span>
+                </button>
+                <button type="button" onclick="insertVariable('{text_time}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{text_time}</code>
+                    <span class="text-gray-500 text-xs ml-2">Daily text time (e.g., 9:00 AM)</span>
+                </button>
+                {% elif prompt_name in ['daily_workout', 'daily_rest'] %}
+                <!-- Daily Message Variables -->
+                <button type="button" onclick="insertVariable('{name}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{name}</code>
+                    <span class="text-gray-500 text-xs ml-2">User's name</span>
+                </button>
+                <button type="button" onclick="insertVariable('{day}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{day}</code>
+                    <span class="text-gray-500 text-xs ml-2">Day of week</span>
+                </button>
+                {% if prompt_name == 'daily_workout' %}
+                <button type="button" onclick="insertVariable('{focus}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{focus}</code>
+                    <span class="text-gray-500 text-xs ml-2">Workout focus</span>
+                </button>
+                <button type="button" onclick="insertVariable('{exercises}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{exercises}</code>
+                    <span class="text-gray-500 text-xs ml-2">Exercise list</span>
+                </button>
+                <button type="button" onclick="insertVariable('{tracking_url}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{tracking_url}</code>
+                    <span class="text-gray-500 text-xs ml-2">Tracking link</span>
+                </button>
+                {% endif %}
+                {% elif prompt_name in ['plan_generator', 'plan_chat'] %}
+                <!-- Plan Generation Variables -->
+                <button type="button" onclick="insertVariable('{name}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{name}</code>
+                    <span class="text-gray-500 text-xs ml-2">User's name</span>
+                </button>
+                <button type="button" onclick="insertVariable('{age}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{age}</code>
+                    <span class="text-gray-500 text-xs ml-2">User's age</span>
+                </button>
+                <button type="button" onclick="insertVariable('{sex}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{sex}</code>
+                    <span class="text-gray-500 text-xs ml-2">User's sex</span>
+                </button>
+                <button type="button" onclick="insertVariable('{goal}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{goal}</code>
+                    <span class="text-gray-500 text-xs ml-2">Fitness goal</span>
+                </button>
+                <button type="button" onclick="insertVariable('{experience}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{experience}</code>
+                    <span class="text-gray-500 text-xs ml-2">Experience level</span>
+                </button>
+                <button type="button" onclick="insertVariable('{equipment}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{equipment}</code>
+                    <span class="text-gray-500 text-xs ml-2">Equipment</span>
+                </button>
+                <button type="button" onclick="insertVariable('{split}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{split}</code>
+                    <span class="text-gray-500 text-xs ml-2">Training split</span>
+                </button>
+                <button type="button" onclick="insertVariable('{workout_days}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{workout_days}</code>
+                    <span class="text-gray-500 text-xs ml-2">Workout days</span>
+                </button>
+                <button type="button" onclick="insertVariable('{notes}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{notes}</code>
+                    <span class="text-gray-500 text-xs ml-2">User notes</span>
+                </button>
+                {% if prompt_name == 'plan_chat' %}
+                <button type="button" onclick="insertVariable('{current_plan}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{current_plan}</code>
+                    <span class="text-gray-500 text-xs ml-2">Current plan JSON</span>
+                </button>
+                <button type="button" onclick="insertVariable('{conversation_history}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{conversation_history}</code>
+                    <span class="text-gray-500 text-xs ml-2">Chat history</span>
+                </button>
+                <button type="button" onclick="insertVariable('{user_message}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{user_message}</code>
+                    <span class="text-gray-500 text-xs ml-2">User message</span>
+                </button>
+                <button type="button" onclick="insertVariable('{include_warmup}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{include_warmup}</code>
+                    <span class="text-gray-500 text-xs ml-2">Warmup pref</span>
+                </button>
+                <button type="button" onclick="insertVariable('{include_mobility}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{include_mobility}</code>
+                    <span class="text-gray-500 text-xs ml-2">Mobility pref</span>
+                </button>
+                {% endif %}
+                {% else %}
+                <!-- Coach Agent Variables -->
+                <button type="button" onclick="insertVariable('{user_name}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{user_name}</code>
+                    <span class="text-gray-500 text-xs ml-2">User's name</span>
+                </button>
+                <button type="button" onclick="insertVariable('{goal}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{goal}</code>
+                    <span class="text-gray-500 text-xs ml-2">Fitness goal</span>
+                </button>
+                <button type="button" onclick="insertVariable('{experience}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{experience}</code>
+                    <span class="text-gray-500 text-xs ml-2">Experience level</span>
+                </button>
+                <button type="button" onclick="insertVariable('{equipment}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{equipment}</code>
+                    <span class="text-gray-500 text-xs ml-2">Equipment</span>
+                </button>
+                <button type="button" onclick="insertVariable('{split}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{split}</code>
+                    <span class="text-gray-500 text-xs ml-2">Training split</span>
+                </button>
+                <button type="button" onclick="insertVariable('{workout_today}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{workout_today}</code>
+                    <span class="text-gray-500 text-xs ml-2">Today's workout</span>
+                </button>
+                <button type="button" onclick="insertVariable('{recent_messages}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{recent_messages}</code>
+                    <span class="text-gray-500 text-xs ml-2">Conversation</span>
+                </button>
+                <button type="button" onclick="insertVariable('{incoming_message}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{incoming_message}</code>
+                    <span class="text-gray-500 text-xs ml-2">Current message</span>
+                </button>
+                <button type="button" onclick="insertVariable('{workout_history}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{workout_history}</code>
+                    <span class="text-gray-500 text-xs ml-2">Last 7 days</span>
+                </button>
+                <button type="button" onclick="insertVariable('{full_workout_plan}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{full_workout_plan}</code>
+                    <span class="text-gray-500 text-xs ml-2">Weekly plan</span>
+                </button>
+                <button type="button" onclick="insertVariable('{workout_performance_history}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{workout_performance_history}</code>
+                    <span class="text-gray-500 text-xs ml-2">Past sessions</span>
+                </button>
+                <button type="button" onclick="insertVariable('{current_datetime}')" class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm">
+                    <code class="text-purple-600">{current_datetime}</code>
+                    <span class="text-gray-500 text-xs ml-2">Now (user's TZ)</span>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="bg-white rounded-xl shadow-sm border p-6" id="preview-panel" style="display: none;">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Preview</h3>
+            <div id="preview-content" class="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-4 rounded max-h-96 overflow-y-auto">
+            </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Tips</h4>
+            <ul class="text-xs text-gray-600 space-y-1">
+                <li>Changes auto-save as draft every 3 seconds</li>
+                <li>Click "Save Changes" to create a new version</li>
+                <li>View History to see all past versions</li>
+                <li>Test with preview before saving</li>
+                {% if prompt_name == 'first_message' %}
+                <li class="text-amber-700 font-medium">Use --- to separate multiple messages</li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    const textarea = document.getElementById('prompt-content');
+    const charCount = document.getElementById('char-count');
+    const saveStatus = document.getElementById('save-status');
+    const discardBtn = document.getElementById('discard-btn');
+    const draftBanner = document.getElementById('draft-banner');
+    const promptName = '{{ prompt_name }}';
+
+    let originalContent = textarea.value;
+    let draftContent = {% if draft %}'{{ draft.draft_text | e }}'{% else %}null{% endif %};
+    let draftSaveTimeout = null;
+    let hasUnsavedChanges = false;
+    const DRAFT_SAVE_DELAY = 3000; // 3 seconds
+
+    // Update character count
+    textarea.addEventListener('input', function() {
+        charCount.textContent = this.value.length + ' chars';
+
+        // Check for changes
+        if (this.value !== originalContent) {
+            hasUnsavedChanges = true;
+            discardBtn.classList.remove('hidden');
+            showStatus('Unsaved changes', 'warning');
+
+            // Schedule draft save
+            clearTimeout(draftSaveTimeout);
+            draftSaveTimeout = setTimeout(saveDraft, DRAFT_SAVE_DELAY);
+        } else {
+            hasUnsavedChanges = false;
+            discardBtn.classList.add('hidden');
+            showStatus('', 'normal');
+        }
+    });
+
+    function showStatus(text, type) {
+        saveStatus.textContent = text;
+        saveStatus.className = 'text-sm ';
+        if (type === 'success') {
+            saveStatus.className += 'text-green-600';
+        } else if (type === 'warning') {
+            saveStatus.className += 'text-yellow-600';
+        } else if (type === 'error') {
+            saveStatus.className += 'text-red-600';
+        } else {
+            saveStatus.className += 'text-gray-400';
+        }
+    }
+
+    async function saveDraft() {
+        const content = textarea.value;
+        if (content === originalContent) return;
+
+        showStatus('Saving draft...', 'normal');
+
+        try {
+            const response = await fetch(`/admin/prompts/${promptName}/draft`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({draft_text: content})
+            });
+
+            if (response.ok) {
+                showStatus('Draft saved', 'success');
+                setTimeout(() => {
+                    if (hasUnsavedChanges) {
+                        showStatus('Unsaved changes', 'warning');
+                    }
+                }, 2000);
+            } else {
+                showStatus('Failed to save draft', 'error');
+            }
+        } catch (e) {
+            showStatus('Failed to save draft', 'error');
+        }
+    }
+
+    function restoreDraft() {
+        if (draftContent) {
+            textarea.value = draftContent;
+            charCount.textContent = textarea.value.length + ' chars';
+            hasUnsavedChanges = true;
+            discardBtn.classList.remove('hidden');
+            draftBanner.classList.add('hidden');
+            showStatus('Draft restored', 'success');
+        }
+    }
+
+    async function discardDraft() {
+        try {
+            await fetch(`/admin/prompts/${promptName}/draft`, {
+                method: 'DELETE'
+            });
+        } catch (e) {
+            console.error('Failed to clear draft', e);
+        }
+        draftBanner.classList.add('hidden');
+        draftContent = null;
+    }
+
+    function discardDraftAndReload() {
+        if (confirm('Discard all changes and reload the saved version?')) {
+            discardDraft().then(() => {
+                window.location.reload();
+            });
+        }
+    }
+
+    // Insert variable at cursor
+    function insertVariable(variable) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+
+        textarea.value = text.substring(0, start) + variable + text.substring(end);
+        textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+
+        // Update char count and trigger change detection
+        charCount.textContent = textarea.value.length + ' chars';
+        textarea.dispatchEvent(new Event('input'));
+    }
+
+    // Preview prompt with sample data
+    function previewPrompt() {
+        const now = new Date();
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+        const currentDateTime = now.toLocaleDateString('en-US', dateOptions) + ' at ' + now.toLocaleTimeString('en-US', timeOptions);
+
+        const sampleData = {
+            '{user_name}': 'Alex',
+            '{name}': 'Alex',
+            '{text_time}': '9:00 AM',
+            '{goal}': 'build muscle and get stronger',
+            '{experience}': 'intermediate',
+            '{equipment}': 'dumbbells, barbell, bench, pull-up bar',
+            '{split}': 'Push/Pull/Legs',
+            '{workout_today}': 'Push Day: Bench Press 4x8, Shoulder Press 3x10, Tricep Dips 3x12',
+            '{recent_messages}': '--- Yesterday ---\n[03:30 PM] User: Hey Brandon, what\'s my workout today?\n[03:32 PM] Brandon: Hey! Today is push day...\n\n--- Today ---\n[09:15 AM] User: Good morning!\n[09:17 AM] Brandon: Morning! Ready to crush it?',
+            '{incoming_message}': 'The bench felt great, hit a new PR!',
+            '{workout_history}': 'Mon: Push - Completed\nTue: Pull - Completed\nWed: Legs - Not Completed',
+            '{full_workout_plan}': 'Mon: Push, Tue: Pull, Wed: Legs, Thu: Push, Fri: Pull, Sat: Legs, Sun: Rest',
+            '{workout_performance_history}': 'Dec 20: Bench 135x8, Dec 13: Bench 130x8',
+            '{current_datetime}': currentDateTime,
+            '{day}': 'Monday',
+            '{focus}': 'Push',
+            '{exercises}': 'Bench Press 4x8\nShoulder Press 3x10\nTricep Dips 3x12',
+            '{tracking_url}': 'https://brandon.app/track/abc123'
+        };
+
+        let preview = textarea.value;
+        for (const [key, value] of Object.entries(sampleData)) {
+            preview = preview.replace(new RegExp(key.replace(/[{}]/g, '\\$&'), 'g'), value);
+        }
+
+        {% if prompt_name == 'first_message' %}
+        // Show multi-message preview for first_message template
+        const messages = preview.split('---').map(m => m.trim()).filter(m => m);
+        if (messages.length > 1) {
+            preview = messages.map((msg, i) => `[Message ${i+1}]\n${msg}`).join('\n\n--- 1 second delay ---\n\n');
+        }
+        {% endif %}
+
+        document.getElementById('preview-content').textContent = preview;
+        document.getElementById('preview-panel').style.display = 'block';
+    }
+
+    // Warn before leaving with unsaved changes
+    window.addEventListener('beforeunload', function(e) {
+        if (hasUnsavedChanges) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    // Clear warning on form submit
+    document.getElementById('prompt-form').addEventListener('submit', function() {
+        hasUnsavedChanges = false;
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,542 @@
+/* Modern Typography - Plus Jakarta Sans (body) */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* "Floating Cosmos" Theme - Deep Void with Emerald Glow */
+  --color-background: hsl(0 0% 2%);      /* #050505 Deep Black */
+  --color-foreground: hsl(0 0% 100%);    /* #FFFFFF Pure White */
+
+  --color-card: hsl(0 0% 5%);            /* Slightly lighter black */
+  --color-card-foreground: hsl(0 0% 100%);
+
+  --color-popover: hsl(0 0% 5%);
+  --color-popover-foreground: hsl(0 0% 100%);
+
+  --color-primary: hsl(0 0% 100%);       /* White accent */
+  --color-primary-foreground: hsl(0 0% 0%); /* Black text on white */
+
+  --color-secondary: hsl(0 0% 12%);      /* Dark Grey */
+  --color-secondary-foreground: hsl(0 0% 100%);
+
+  --color-muted: hsl(0 0% 12%);
+  --color-muted-foreground: hsl(0 0% 60%);
+
+  --color-accent: hsl(0 0% 15%);
+  --color-accent-foreground: hsl(0 0% 100%);
+
+  --color-destructive: hsl(0 62.8% 30.6%);
+  --color-destructive-foreground: hsl(0 0% 98%);
+
+  --color-border: hsl(0 0% 15%);         /* Subtle grey borders */
+  --color-input: hsl(0 0% 10%);
+  --color-ring: hsl(0 0% 100%);
+
+  --color-chart-1: hsl(0 0% 100%);
+  --color-chart-2: hsl(0 0% 80%);
+  --color-chart-3: hsl(0 0% 60%);
+  --color-chart-4: hsl(0 0% 40%);
+  --color-chart-5: hsl(0 0% 20%);
+
+  /* Emerald glow accents */
+  --emerald-glow: rgba(16, 185, 129, 0.4);
+  --card-glass: rgba(255, 255, 255, 0.04);
+  --card-border: rgba(255, 255, 255, 0.08);
+
+  --font-sans: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  --font-heading: 'Plus Jakarta Sans', 'Space Grotesk', sans-serif;
+  --font-serif: 'Playfair Display', serif;
+
+  --radius: 0.75rem; /* Tighter radius for a more technical look */
+
+  --shadow-soft: 0 0 0 1px rgba(255,255,255,0.1), 0 4px 20px rgba(0,0,0,1);
+}
+
+/* Safe area insets for notched devices (iPhone X+, Android gesture nav) */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+}
+
+/* Utility classes for safe areas */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}
+
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top), 1rem);
+}
+
+/* Hide number input spinners so text stays centered */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Minimum touch target for accessibility (44px per Apple HIG) */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Hide scrollbar while keeping scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
+/* Respect user's reduced motion preference */
+/* Note: We exclude elements with style attribute (Framer Motion uses inline styles) */
+/* to let Framer Motion handle reduced motion natively via useReducedMotion hook */
+@media (prefers-reduced-motion: reduce) {
+  *:not([style]),
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ========================================
+   iOS Liquid Glass Design System
+   Inspired by Apple's iOS 26 design language
+   ======================================== */
+
+/* Liquid Glass CTA Button - Apple visionOS hover states */
+.liquid-glass-cta {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease-out;
+}
+
+.liquid-glass-cta:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.liquid-glass-cta:active {
+  transform: scale(0.98);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Glass surface - translucent with backdrop blur */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  /* Specular highlight - subtle gradient for depth */
+  background-image: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0) 50%
+  );
+}
+
+/* Glass card for desktop only (md: breakpoint = 768px) */
+@media (min-width: 768px) {
+  .glass-card-desktop {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 2rem;
+    min-height: 580px;
+    /* Specular highlight */
+    background-image: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0) 50%
+    );
+  }
+}
+
+/* Glass input field */
+.glass-input {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.glass-input:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  outline: none;
+}
+
+/* Glass button - primary CTA */
+.glass-button {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: black;
+  border: none;
+  border-radius: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  /* Subtle inner glow */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.glass-button:hover {
+  background: rgba(255, 255, 255, 1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 6px 24px rgba(0, 0, 0, 0.35);
+  transform: translateY(-1px);
+}
+
+.glass-button:active {
+  transform: translateY(0);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 2px 12px rgba(0, 0, 0, 0.25);
+}
+
+.glass-button:disabled {
+  background: rgba(255, 255, 255, 0.3);
+  color: rgba(0, 0, 0, 0.5);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Glass pill button - for selection options */
+.glass-pill {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.glass-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.glass-pill.selected {
+  background: rgba(255, 255, 255, 0.95);
+  color: black;
+  border-color: transparent;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* ========================================
+   Liquid Glass Component System
+   Primary containers, surfaces, and elevated elements
+   ======================================== */
+
+/* Glass Card - Primary container for content */
+.glass-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  /* Top edge specular highlight for depth */
+  background-image: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 1px
+  );
+  transition: all 0.2s ease-out;
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Glass Surface - Subtle backgrounds for sidebars/sections */
+.glass-surface {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Glass Elevated - Floating elements like sheets, dropdowns */
+.glass-elevated {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.2);
+  /* Top edge specular highlight */
+  background-image: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 1px
+  );
+}
+
+/* Glass Header - Navigation bars with subtle blur */
+.glass-header {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading font-medium tracking-tight;
+  }
+  
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+  
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+}
+
+/* ========================================
+   Floating Card System - Landing Page
+   Glassmorphic cards with subtle animations
+   ======================================== */
+
+/* Floating Card Base - Glassmorphic style */
+.floating-card {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(16, 185, 129, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.floating-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 60px rgba(16, 185, 129, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Float animation keyframes */
+@keyframes float-gentle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes float-gentle-reverse {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(8px);
+  }
+}
+
+@keyframes float-subtle {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(0.5deg);
+  }
+}
+
+.animate-float-gentle {
+  animation: float-gentle 6s ease-in-out infinite;
+}
+
+.animate-float-gentle-reverse {
+  animation: float-gentle-reverse 7s ease-in-out infinite;
+}
+
+.animate-float-subtle {
+  animation: float-subtle 5s ease-in-out infinite;
+}
+
+/* Staggered animation delays */
+.float-delay-1 { animation-delay: 0s; }
+.float-delay-2 { animation-delay: 1s; }
+.float-delay-3 { animation-delay: 2s; }
+.float-delay-4 { animation-delay: 0.5s; }
+
+/* Emerald glow effect for accent elements */
+.emerald-glow {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+}
+
+.emerald-glow-strong {
+  box-shadow: 0 0 40px rgba(16, 185, 129, 0.4);
+}
+
+/* Phone mockup styling */
+.phone-mockup {
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.8),
+    0 0 80px rgba(16, 185, 129, 0.15),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Progress bar glow */
+.progress-glow {
+  box-shadow:
+    0 0 12px rgba(16, 185, 129, 0.5),
+    0 0 4px rgba(16, 185, 129, 0.8);
+}
+
+/* PR (Personal Record) glow animation for workout tracker */
+@keyframes pr-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.3), inset 0 0 20px rgba(251, 191, 36, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(251, 191, 36, 0.5), inset 0 0 30px rgba(251, 191, 36, 0.1);
+  }
+}
+
+/* ===== International Phone Input Dark Theme ===== */
+.phone-input-dark {
+  --PhoneInputCountryFlag-height: 1.25em;
+  --PhoneInputCountryFlag-borderColor: rgba(255, 255, 255, 0.1);
+  --PhoneInputCountrySelectArrow-color: rgba(255, 255, 255, 0.5);
+  --PhoneInputCountrySelectArrow-opacity: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.phone-input-dark .PhoneInputInput {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px 16px 16px 12px;
+  font-size: 1.125rem;
+  color: white;
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.phone-input-dark .PhoneInputInput::placeholder {
+  color: rgba(161, 161, 170, 0.6);
+}
+
+.phone-input-dark .PhoneInputInput:focus {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.phone-input-dark .PhoneInputCountry {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.phone-input-dark .PhoneInputCountry:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Show calling code after flag in selector */
+.phone-input-dark .PhoneInputCountry::after {
+  content: attr(data-country-calling-code);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.phone-input-dark .PhoneInputCountrySelect {
+  color: white;
+  background: #18181b;
+}
+
+.phone-input-dark .PhoneInputCountrySelect option {
+  background: #18181b;
+  color: white;
+}
+
+.phone-input-dark .PhoneInputCountrySelectArrow {
+  border-color: rgba(255, 255, 255, 0.5);
+  margin-left: 2px;
+}
+
+.phone-input-dark .PhoneInputCountryIconImg {
+  border-radius: 2px;
+}
+
+/* Add spacing in the input for country calling code */
+.phone-input-dark .PhoneInputInput {
+  letter-spacing: 0.02em;
+}
+
+/* Country dropdown styling */
+.phone-input-dark .PhoneInputCountrySelect:focus + .PhoneInputCountryIcon--border {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+}

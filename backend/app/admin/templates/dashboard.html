@@ -1,0 +1,723 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    /* Typography */
+    .dash-font { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+
+    /* Base container */
+    .dashboard {
+        background: #f8fafc;
+        margin: -2rem;
+        padding: 2rem 2.5rem;
+        min-height: calc(100vh - 8rem);
+    }
+
+    /* Card styles */
+    .card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        transition: all 0.15s ease;
+    }
+    .card:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+
+    /* Metric card with top accent */
+    .metric-card {
+        position: relative;
+        overflow: hidden;
+    }
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+    }
+    .metric-card.accent-emerald::before { background: linear-gradient(90deg, #10b981, #34d399); }
+    .metric-card.accent-blue::before { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+    .metric-card.accent-amber::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .metric-card.accent-violet::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+
+    /* Progress bars */
+    .progress-bg {
+        background: #f1f5f9;
+        border-radius: 100px;
+        height: 6px;
+    }
+    .progress-bar {
+        border-radius: 100px;
+        height: 100%;
+        transition: width 0.5s ease;
+    }
+
+    /* Ring chart */
+    .ring-svg { transform: rotate(-90deg); }
+    .ring-track { stroke: #f1f5f9; }
+    .ring-fill {
+        stroke-linecap: round;
+        transition: stroke-dashoffset 0.6s ease;
+    }
+
+    /* Labels */
+    .label-xs {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #94a3b8;
+    }
+
+    /* Stat pill */
+    .stat-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 100px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+</style>
+
+<div class="dashboard dash-font">
+    <!-- Header Row -->
+    <div class="flex items-start justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
+            <p class="text-slate-500 text-sm mt-0.5">Brandon Coaching &middot; Live Metrics</p>
+        </div>
+        <div class="flex items-center gap-3">
+            {% if mrr_data.stripe_status == 'connected' %}
+            <span class="stat-pill bg-emerald-50 text-emerald-700">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Stripe Connected
+            </span>
+            {% elif mrr_data.stripe_status == 'not_configured' %}
+            <span class="stat-pill bg-red-50 text-red-600">
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                Stripe Not Configured
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- KPI Cards Row -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+        <!-- Revenue -->
+        <div class="card metric-card accent-emerald p-5">
+            <div class="label-xs mb-3">Revenue</div>
+            <div class="flex items-baseline gap-2 mb-1">
+                <span class="text-3xl font-bold text-slate-900 mono">${{ "%.0f"|format(mrr_data.mrr) }}</span>
+                <span class="text-slate-400 text-sm">MRR</span>
+            </div>
+            {% if mrr_data.trialing.mrr_value > 0 %}
+            <div class="stat-pill bg-amber-50 text-amber-700 text-xs mt-2">
+                +${{ "%.0f"|format(mrr_data.trialing.mrr_value) }} potential
+            </div>
+            {% endif %}
+            <div class="flex items-center gap-4 mt-4 pt-3 border-t border-slate-100 text-xs">
+                <span class="text-slate-500">Monthly <span class="mono text-slate-700 font-medium ml-1">{{ mrr_data.monthly_count }}</span></span>
+                <span class="text-slate-500">Yearly <span class="mono text-slate-700 font-medium ml-1">{{ mrr_data.yearly_count }}</span></span>
+                {% if mrr_data.trialing.count > 0 %}
+                <span class="text-amber-600">Trial <span class="mono text-amber-700 font-medium ml-1">{{ mrr_data.trialing.count }}</span></span>
+                {% endif %}
+                {% if mrr_data.no_card_count > 0 %}
+                <span class="text-rose-500">No card <span class="mono text-rose-600 font-medium ml-1">{{ mrr_data.no_card_count }}</span></span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Engagement -->
+        <div class="card metric-card accent-blue p-5">
+            <div class="label-xs mb-3">Engagement (7d)</div>
+            <div class="space-y-2.5">
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-slate-500">Messaged</span>
+                        <span class="mono text-slate-700">{{ engagement.messaged }}/{{ engagement.total }}</span>
+                    </div>
+                    <div class="progress-bg">
+                        <div class="progress-bar bg-blue-500" style="width: {% if engagement.total > 0 %}{{ (engagement.messaged / engagement.total * 100)|int }}{% else %}0{% endif %}%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-slate-500">Worked Out</span>
+                        <span class="mono text-slate-700">{{ engagement.worked_out }}/{{ engagement.total }}</span>
+                    </div>
+                    <div class="progress-bg">
+                        <div class="progress-bar bg-cyan-500" style="width: {% if engagement.total > 0 %}{{ (engagement.worked_out / engagement.total * 100)|int }}{% else %}0{% endif %}%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-slate-500">Both</span>
+                        <span class="mono text-slate-700">{{ engagement.both }}/{{ engagement.total }}</span>
+                    </div>
+                    <div class="progress-bg">
+                        <div class="progress-bar bg-gradient-to-r from-blue-500 to-violet-500" style="width: {% if engagement.total > 0 %}{{ (engagement.both / engagement.total * 100)|int }}{% else %}0{% endif %}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delivery -->
+        <div class="card metric-card accent-amber p-5">
+            <div class="label-xs mb-3">Delivery (7d)</div>
+            <div class="flex items-center gap-4">
+                <div class="relative w-16 h-16 flex-shrink-0">
+                    <svg class="ring-svg w-16 h-16" viewBox="0 0 64 64">
+                        <circle class="ring-track" cx="32" cy="32" r="26" stroke-width="6" fill="none"/>
+                        <circle class="ring-fill" cx="32" cy="32" r="26"
+                                stroke="{% if delivery_rate.rate >= 95 %}#10b981{% elif delivery_rate.rate >= 80 %}#f59e0b{% else %}#ef4444{% endif %}"
+                                stroke-width="6" fill="none"
+                                stroke-dasharray="163"
+                                stroke-dashoffset="{{ 163 - (delivery_rate.rate / 100 * 163) }}"/>
+                    </svg>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <span class="text-base font-bold text-slate-900 mono">{{ "%.0f"|format(delivery_rate.rate) }}%</span>
+                    </div>
+                </div>
+                <div class="text-xs space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span class="mono text-slate-700 font-medium">{{ delivery_rate.sent }}</span>
+                        <span class="text-slate-400">sent</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full {% if delivery_rate.failed > 0 %}bg-red-500{% else %}bg-slate-200{% endif %}"></span>
+                        <span class="mono {% if delivery_rate.failed > 0 %}text-red-600{% else %}text-slate-700{% endif %} font-medium">{{ delivery_rate.failed }}</span>
+                        <span class="text-slate-400">failed</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workouts Today -->
+        <div class="card metric-card accent-violet p-5">
+            <div class="label-xs mb-3">Workouts Today</div>
+            <div class="flex items-center gap-4">
+                <div class="relative w-16 h-16 flex-shrink-0">
+                    <svg class="ring-svg w-16 h-16" viewBox="0 0 64 64">
+                        <circle class="ring-track" cx="32" cy="32" r="26" stroke-width="6" fill="none"/>
+                        <circle class="ring-fill" cx="32" cy="32" r="26"
+                                stroke="#8b5cf6"
+                                stroke-width="6" fill="none"
+                                stroke-dasharray="163"
+                                stroke-dashoffset="{{ 163 - (workout_completion.rate / 100 * 163) }}"/>
+                    </svg>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <span class="text-base font-bold text-slate-900 mono">
+                            {% if workout_completion.scheduled > 0 %}{{ "%.0f"|format(workout_completion.rate) }}%{% else %}&mdash;{% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="text-xs space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-violet-500"></span>
+                        <span class="mono text-slate-700 font-medium">{{ workout_completion.completed }}/{{ workout_completion.scheduled }}</span>
+                        <span class="text-slate-400">done</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-slate-200"></span>
+                        <span class="mono text-slate-700 font-medium">{{ workout_completion.rest_day }}</span>
+                        <span class="text-slate-400">rest</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Activity + Lifecycle Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-5">
+
+        <!-- Message Activity Card -->
+        <div class="lg:col-span-3 card p-5">
+            <div class="label-xs mb-4">Messages (24h)</div>
+            <div class="flex items-end justify-between mb-4">
+                <div>
+                    <div class="text-3xl font-bold text-slate-900 mono">{{ stats.inbound_24h + stats.outbound_24h }}</div>
+                    <div class="text-xs text-slate-400 mt-1">total messages</div>
+                </div>
+            </div>
+            <div class="space-y-3 pt-3 border-t border-slate-100">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5 text-cyan-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                        <span class="text-xs text-slate-500">Inbound</span>
+                    </div>
+                    <span class="mono text-sm font-semibold text-slate-900">{{ stats.inbound_24h }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5 text-violet-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+                        <span class="text-xs text-slate-500">Outbound</span>
+                    </div>
+                    <span class="mono text-sm font-semibold text-slate-900">{{ stats.outbound_24h }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lifecycle Stages Card -->
+        <div class="lg:col-span-9 card overflow-hidden">
+            <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <h2 class="font-semibold text-slate-900">Lifecycle Stages</h2>
+                    <div class="flex items-center bg-slate-100 rounded-lg p-0.5 text-xs">
+                        <button id="lc-btn-24h" onclick="showLifecycle('24h')" class="px-2.5 py-1 rounded-md font-medium transition bg-white text-slate-900 shadow-sm">24h</button>
+                        <button id="lc-btn-7d" onclick="showLifecycle('7d')" class="px-2.5 py-1 rounded-md font-medium transition text-slate-500 hover:text-slate-700">7d</button>
+                        <button id="lc-btn-lifetime" onclick="showLifecycle('lifetime')" class="px-2.5 py-1 rounded-md font-medium transition text-slate-500 hover:text-slate-700">All</button>
+                    </div>
+                </div>
+                <span id="lc-total" class="mono text-xs text-slate-400">{{ user_funnel["24h"].total }} users</span>
+            </div>
+
+            {% for view_key in ["24h", "7d", "lifetime"] %}
+            {% set vf = user_funnel[view_key] %}
+            {% set t = vf.total if vf.total > 0 else 1 %}
+            {% set max_count = [vf.onboarding.count, vf.stuck_in_activation.count, vf.trialing.count, vf.expired_trial.count, vf.active.count, vf.churned.count] | max %}
+            {% set m = max_count if max_count > 0 else 1 %}
+
+            <div id="lc-view-{{ view_key }}" class="{% if view_key != '24h' %}hidden{% endif %}">
+                {% set stages = [
+                    ("onboarding", vf.onboarding.count, "Onboard", "blue", "from-blue-500 to-blue-400"),
+                    ("stuck", vf.stuck_in_activation.count, "Stuck", "amber", "from-amber-500 to-amber-400"),
+                    ("trialing", vf.trialing.count, "Trial", "cyan", "from-cyan-500 to-cyan-400"),
+                    ("expired", vf.expired_trial.count, "Expired", "slate", "from-slate-500 to-slate-400"),
+                    ("active", vf.active.count, "Active", "emerald", "from-emerald-500 to-emerald-400"),
+                    ("churned", vf.churned.count, "Churn", "red", "from-red-500 to-red-400"),
+                ] %}
+                <div class="px-5 pt-5 pb-2">
+                    <div class="flex items-end gap-1.5" style="height: 170px;">
+                        {% for key, count, label, color, gradient in stages %}
+                        {% set pct = ((count / m) * 100) | round(0) | int if count > 0 else 0 %}
+                        {% set bar_pct = [pct, 12] | max if count > 0 else 12 %}
+                        {% set is_short = pct < 35 %}
+                        <div class="flex-1 flex flex-col items-center" style="height: 100%; justify-content: flex-end;">
+                            {% if is_short %}
+                            <div class="flex flex-col items-center mb-1">
+                                <span class="mono text-sm font-bold text-slate-700">{{ count }}</span>
+                                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wide">{{ label }}</span>
+                            </div>
+                            {% endif %}
+                            <div class="w-full rounded-t-lg relative cursor-default transition-all duration-500 ease-out hover:brightness-110
+                                 {% if count > 0 %}bg-gradient-to-t {{ gradient }}{% else %}bg-slate-100 border border-dashed border-slate-300{% endif %}"
+                                 style="height: {{ bar_pct }}%">
+                                {% if not is_short %}
+                                <div class="absolute inset-0 flex flex-col items-center justify-center gap-0.5 px-1">
+                                    <span class="mono text-xl font-bold text-white drop-shadow-sm">{{ count }}</span>
+                                    <span class="text-[9px] font-bold text-white/70 uppercase tracking-wide">{{ label }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Sub-metrics legend -->
+                <div class="px-5 pb-4 pt-2 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
+                    <div class="flex items-center gap-1.5 text-slate-500">
+                        <span class="w-2 h-2 rounded-sm bg-cyan-400"></span>
+                        <span>Trialing</span>
+                        <span class="text-slate-300">—</span>
+                        <span>1st Workout: <span class="mono font-semibold text-slate-700">{{ vf.trialing.completed_first_workout }}</span></span>
+                        <span class="text-slate-200">|</span>
+                        <span class="{% if vf.trialing.at_risk > 0 %}text-amber-600{% endif %}">At-Risk: <span class="mono font-semibold {% if vf.trialing.at_risk > 0 %}text-amber-700{% else %}text-slate-700{% endif %}">{{ vf.trialing.at_risk }}</span></span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-slate-500">
+                        <span class="w-2 h-2 rounded-sm bg-emerald-400"></span>
+                        <span>Active</span>
+                        <span class="text-slate-300">—</span>
+                        <span>1st Workout: <span class="mono font-semibold text-slate-700">{{ vf.active.completed_first_workout }}</span></span>
+                        <span class="text-slate-200">|</span>
+                        <span class="{% if vf.active.at_risk > 0 %}text-amber-600{% endif %}">At-Risk: <span class="mono font-semibold {% if vf.active.at_risk > 0 %}text-amber-700{% else %}text-slate-700{% endif %}">{{ vf.active.at_risk }}</span></span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+        <!-- Signups Chart -->
+        <div class="lg:col-span-2 card p-5">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="font-semibold text-slate-900">Signups</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Last 30 days</p>
+                </div>
+                <div class="flex items-center gap-4 text-xs">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                        <span class="text-slate-500">Stripe</span>
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                        <span class="text-slate-500">Promo</span>
+                    </span>
+                </div>
+            </div>
+            <div class="h-44">
+                <canvas id="signupsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Subscriptions -->
+        <div class="card p-5">
+            <h2 class="font-semibold text-slate-900 mb-4">Subscriptions</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <div class="label-xs mb-2">By Status</div>
+                    <div class="h-24">
+                        <canvas id="subscriptionStatusChart"></canvas>
+                    </div>
+                </div>
+                <div>
+                    <div class="label-xs mb-2">By Plan</div>
+                    <div class="h-24">
+                        <canvas id="subscriptionIntervalChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trial Section (conditional) -->
+    {% if mrr_data.trialing.count > 0 %}
+    <div class="card p-5 mb-5">
+        <div class="flex items-center gap-3 mb-4">
+            <h2 class="font-semibold text-slate-900">Trial Pipeline</h2>
+            <span class="stat-pill bg-amber-50 text-amber-700 text-xs">{{ mrr_data.trialing.count }} active</span>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div>
+                <div class="h-28">
+                    <canvas id="trialDaysChart"></canvas>
+                </div>
+                <p class="text-xs text-slate-400 text-center mt-2">Days into trial</p>
+            </div>
+            <div class="space-y-2 max-h-36 overflow-y-auto">
+                {% for sub in mrr_data.trialing.subscribers %}
+                <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-6 h-6 rounded-full {% if sub.days_remaining <= 1 %}bg-red-100 text-red-600{% elif sub.days_remaining <= 3 %}bg-amber-100 text-amber-600{% else %}bg-amber-50 text-amber-700{% endif %} flex items-center justify-center text-[10px] font-bold">
+                            {{ sub.day }}
+                        </div>
+                        <span class="text-sm {% if sub.plan == 'yearly' %}text-pink-600{% else %}text-violet-600{% endif %} font-medium">
+                            {{ 'Yearly' if sub.plan == 'yearly' else 'Monthly' }}
+                        </span>
+                        <span class="text-xs text-slate-400">${{ "%.0f"|format(sub.amount) }}/{{ 'yr' if sub.plan == 'yearly' else 'mo' }}</span>
+                    </div>
+                    <span class="text-xs {% if sub.days_remaining <= 1 %}text-red-500 font-medium{% elif sub.days_remaining <= 3 %}text-amber-500{% else %}text-slate-400{% endif %}">
+                        {{ sub.days_remaining }}d left
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Cancellations -->
+    {% if recent_cancellations %}
+    <div class="card p-5 mb-5">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+                <h2 class="font-semibold text-slate-900">Recent Cancellations</h2>
+                <span class="stat-pill bg-red-50 text-red-600 text-xs">{{ recent_cancellations|length }} churned</span>
+            </div>
+            <a href="/admin/users?status=canceled" class="text-xs text-slate-500 hover:text-slate-700">View all &rarr;</a>
+        </div>
+        <div class="space-y-2 max-h-48 overflow-y-auto">
+            {% for user in recent_cancellations %}
+            <a href="/admin/users/{{ user.user_id }}" class="flex items-center justify-between py-2.5 px-3 rounded-lg bg-slate-50 hover:bg-red-50 transition group">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        {{ user.name[:1].upper() if user.name and user.name != 'Unknown' else '?' }}
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-sm text-slate-700 font-medium truncate group-hover:text-red-700">{{ user.name }}</div>
+                        <div class="text-xs text-slate-400 truncate">{{ user.email }}</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 flex-shrink-0">
+                    {% if user.plan_type %}
+                    <span class="text-xs {% if user.plan_type == 'yearly' %}text-pink-600{% else %}text-violet-600{% endif %} font-medium">
+                        {{ 'Yearly' if user.plan_type == 'yearly' else 'Monthly' }}
+                    </span>
+                    {% endif %}
+                    {% if user.duration_days is not none %}
+                    <span class="text-xs text-slate-400">{{ user.duration_days }}d</span>
+                    {% endif %}
+                    {% if user.canceled_at %}
+                    <span class="text-[10px] text-red-400 font-medium">
+                        {% set canceled_date = user.canceled_at[:10] if user.canceled_at is string else user.canceled_at.strftime('%Y-%m-%d') %}
+                        {{ canceled_date }}
+                    </span>
+                    {% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- AI Usage (Helicone) -->
+    {% if ai_usage and ai_usage.enabled %}
+    <div class="card p-5 mb-5">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+                <h2 class="font-semibold text-slate-900">AI Usage</h2>
+                <span class="stat-pill bg-violet-50 text-violet-700 text-xs">Last 7 days</span>
+            </div>
+            <div class="flex items-center gap-4 text-xs">
+                <span class="text-slate-500">Total: <span class="mono text-slate-900 font-semibold">${{ "%.4f"|format(ai_usage.total_cost) }}</span></span>
+                <span class="text-slate-500">Requests: <span class="mono text-slate-700">{{ ai_usage.total_requests }}</span></span>
+                <span class="text-slate-500">Tokens: <span class="mono text-slate-700">{{ "{:,}".format(ai_usage.total_tokens) }}</span></span>
+            </div>
+        </div>
+        {% if ai_usage.error %}
+        <div class="text-sm text-red-500">{{ ai_usage.error }}</div>
+        {% else %}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <!-- Daily Cost Chart -->
+            <div class="lg:col-span-2">
+                <div class="h-32">
+                    <canvas id="aiCostChart"></canvas>
+                </div>
+            </div>
+            <!-- By Type Breakdown -->
+            <div>
+                <div class="label-xs mb-2">By Type</div>
+                <div class="space-y-1.5">
+                    {% for type, data in ai_usage.by_type.items() %}
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-slate-600">{{ type }}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="mono text-slate-500">{{ data.requests }} req</span>
+                            <span class="mono text-slate-700 font-medium">${{ "%.4f"|format(data.cost) }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if ai_usage.by_model %}
+                <div class="label-xs mb-2 mt-4">By Model</div>
+                <div class="space-y-1.5">
+                    {% for model, data in ai_usage.by_model.items() %}
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-slate-600 truncate max-w-[120px]" title="{{ model }}">{{ model }}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="mono text-slate-500">{{ data.requests }}</span>
+                            <span class="mono text-slate-700 font-medium">${{ "%.4f"|format(data.cost) }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% elif ai_usage and not ai_usage.enabled %}
+    <div class="card p-5 mb-5">
+        <div class="flex items-center gap-3">
+            <h2 class="font-semibold text-slate-900">AI Usage</h2>
+            <span class="stat-pill bg-slate-100 text-slate-500 text-xs">Not configured</span>
+        </div>
+        <p class="text-sm text-slate-400 mt-2">Set HELICONE_API_KEY to enable AI usage tracking.</p>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="card p-5">
+        <div class="label-xs mb-3">Quick Actions</div>
+        <div class="flex flex-wrap gap-2">
+            <a href="/admin/queue" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition text-sm font-medium">Queue</a>
+            <a href="/admin/users" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition text-sm font-medium">Users</a>
+            <a href="/admin/errors" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition text-sm font-medium">Errors</a>
+            <a href="/admin/actions" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition text-sm font-medium">Actions</a>
+            <a href="/admin/prompts" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition text-sm font-medium">Prompts</a>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// Lifecycle view toggle
+const lcTotals = { "24h": {{ user_funnel["24h"].total }}, "7d": {{ user_funnel["7d"].total }}, "lifetime": {{ user_funnel["lifetime"].total }} };
+function showLifecycle(view) {
+    ["24h", "7d", "lifetime"].forEach(v => {
+        const el = document.getElementById("lc-view-" + v);
+        const btn = document.getElementById("lc-btn-" + v);
+        if (v === view) {
+            el.classList.remove("hidden");
+            btn.classList.add("bg-white", "text-slate-900", "shadow-sm");
+            btn.classList.remove("text-slate-500", "hover:text-slate-700");
+        } else {
+            el.classList.add("hidden");
+            btn.classList.remove("bg-white", "text-slate-900", "shadow-sm");
+            btn.classList.add("text-slate-500", "hover:text-slate-700");
+        }
+    });
+    document.getElementById("lc-total").textContent = lcTotals[view] + " users";
+}
+
+Chart.defaults.color = '#64748b';
+Chart.defaults.borderColor = 'rgba(0,0,0,0.04)';
+Chart.defaults.font.family = "'Plus Jakarta Sans', system-ui";
+
+// Signups Chart
+new Chart(document.getElementById('signupsChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ signups_data.labels | tojson }},
+        datasets: [
+            { label: 'Stripe', data: {{ signups_data.stripe | tojson }}, backgroundColor: 'rgba(59, 130, 246, 0.85)', borderRadius: 4, borderSkipped: false },
+            { label: 'Promo', data: {{ signups_data.promo | tojson }}, backgroundColor: 'rgba(16, 185, 129, 0.85)', borderRadius: 4, borderSkipped: false }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { stacked: true, grid: { display: false }, border: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { size: 10 }, color: '#94a3b8' } },
+            y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(0,0,0,0.03)' }, border: { display: false }, ticks: { stepSize: 1, font: { size: 10 }, color: '#94a3b8' } }
+        }
+    }
+});
+
+// Subscription Status
+const statusData = {{ subscription_breakdown.by_status | tojson }};
+new Chart(document.getElementById('subscriptionStatusChart'), {
+    type: 'doughnut',
+    data: {
+        labels: Object.keys(statusData).map(s => s || 'None'),
+        datasets: [{
+            data: Object.values(statusData),
+            backgroundColor: ['rgba(16, 185, 129, 0.85)', 'rgba(59, 130, 246, 0.85)', 'rgba(249, 115, 22, 0.85)', 'rgba(239, 68, 68, 0.85)', 'rgba(148, 163, 184, 0.6)'],
+            borderWidth: 2, borderColor: '#fff', spacing: 1
+        }]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false, cutout: '55%',
+        plugins: { legend: { position: 'right', labels: { boxWidth: 6, padding: 6, font: { size: 9 }, color: '#64748b' } } }
+    }
+});
+
+// Subscription Interval
+const intervalData = {{ subscription_breakdown.by_interval | tojson }};
+new Chart(document.getElementById('subscriptionIntervalChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Monthly', 'Yearly', 'None'],
+        datasets: [{
+            data: [intervalData.monthly, intervalData.yearly, intervalData.none],
+            backgroundColor: ['rgba(139, 92, 246, 0.85)', 'rgba(236, 72, 153, 0.85)', 'rgba(148, 163, 184, 0.6)'],
+            borderWidth: 2, borderColor: '#fff', spacing: 1
+        }]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false, cutout: '55%',
+        plugins: { legend: { position: 'right', labels: { boxWidth: 6, padding: 6, font: { size: 9 }, color: '#64748b' } } }
+    }
+});
+
+// Trial Days Chart
+{% if mrr_data.trialing.count > 0 %}
+const trialByDay = {{ mrr_data.trialing.by_day | tojson }};
+const trialLabels = [], trialData = [];
+for (let i = 1; i <= 14; i++) { trialLabels.push('D' + i); trialData.push(trialByDay[i] || 0); }
+new Chart(document.getElementById('trialDaysChart'), {
+    type: 'bar',
+    data: {
+        labels: trialLabels,
+        datasets: [{ data: trialData, backgroundColor: trialData.map((_, i) => `rgba(245, 158, 11, ${0.4 + (i/14)*0.5})`), borderRadius: 3, borderSkipped: false }]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw + ' user' + (ctx.raw !== 1 ? 's' : '') } } },
+        scales: {
+            x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 9 }, color: '#94a3b8' } },
+            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.03)' }, border: { display: false }, ticks: { stepSize: 1, font: { size: 9 }, color: '#94a3b8', callback: v => Number.isInteger(v) ? v : '' } }
+        }
+    }
+});
+{% endif %}
+
+// AI Usage Chart
+{% if ai_usage and ai_usage.enabled and ai_usage.daily_breakdown %}
+const aiDailyData = {{ ai_usage.daily_breakdown | tojson }};
+if (aiDailyData.length > 0 && document.getElementById('aiCostChart')) {
+    new Chart(document.getElementById('aiCostChart'), {
+        type: 'bar',
+        data: {
+            labels: aiDailyData.map(d => d.date.slice(5)),  // MM-DD format
+            datasets: [{
+                label: 'Cost',
+                data: aiDailyData.map(d => d.cost),
+                backgroundColor: 'rgba(139, 92, 246, 0.7)',
+                borderRadius: 4,
+                borderSkipped: false,
+                yAxisID: 'y'
+            }, {
+                label: 'Requests',
+                data: aiDailyData.map(d => d.requests),
+                type: 'line',
+                borderColor: 'rgba(59, 130, 246, 0.8)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.3,
+                pointRadius: 3,
+                pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: true, position: 'top', labels: { boxWidth: 8, padding: 8, font: { size: 10 } } },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ctx.dataset.label === 'Cost' ? '$' + ctx.raw.toFixed(4) : ctx.raw + ' requests'
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 9 }, color: '#94a3b8' } },
+                y: {
+                    type: 'linear',
+                    position: 'left',
+                    beginAtZero: true,
+                    grid: { color: 'rgba(0,0,0,0.03)' },
+                    border: { display: false },
+                    ticks: { font: { size: 9 }, color: '#94a3b8', callback: v => '$' + v.toFixed(3) }
+                },
+                y1: {
+                    type: 'linear',
+                    position: 'right',
+                    beginAtZero: true,
+                    grid: { display: false },
+                    border: { display: false },
+                    ticks: { font: { size: 9 }, color: '#94a3b8' }
+                }
+            }
+        }
+    });
+}
+{% endif %}
+</script>
+{% endblock %}

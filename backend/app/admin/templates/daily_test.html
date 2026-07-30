@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Message Testing{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Daily Message Testing</h1>
+    <p class="text-gray-500 mt-1">Test and send daily workout messages using the production code path</p>
+</div>
+
+<!-- Test Controls -->
+<div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <!-- User Selection -->
+        <div>
+            <label for="user-select" class="block text-sm font-medium text-gray-700 mb-2">Select User</label>
+            <select id="user-select" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="">-- Select a user --</option>
+                {% for user in users %}
+                <option value="{{ user.user_id }}"
+                    data-name="{{ user.name }}"
+                    data-phone="{{ user.phone }}"
+                    {% if selected_user_id == user.user_id %}selected{% endif %}>
+                    {{ user.name }} ({{ user.phone }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Date Selection -->
+        <div>
+            <label for="date-select" class="block text-sm font-medium text-gray-700 mb-2">Simulate Date</label>
+            <input type="date" id="date-select" value="{{ selected_date }}"
+                class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+    </div>
+    <p class="text-xs text-gray-400 mb-4">Uses the exact same format_daily_message() function as the production cron job, including schedule materialization and prompt templates.</p>
+    <div class="flex gap-2">
+        <button onclick="previewMessage()" class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+            Preview
+        </button>
+        <button onclick="sendMessage()" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+            Send Now
+        </button>
+    </div>
+</div>
+
+<!-- Message Preview -->
+{% if preview_messages %}
+<div class="bg-white rounded-xl shadow-sm border overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
+        <h2 class="text-lg font-semibold text-gray-900">Message Preview ({{ preview_messages|length }} bubble{{ 's' if preview_messages|length != 1 }})</h2>
+        <span class="text-sm text-gray-500">{{ selected_date }} for {{ selected_user_name }}</span>
+    </div>
+    <div class="p-6 space-y-3">
+        {% for msg in preview_messages %}
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="text-xs text-gray-400 mb-1">Bubble {{ loop.index }}</div>
+            <pre class="text-sm text-gray-800 whitespace-pre-wrap font-sans">{{ msg }}</pre>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Send Result -->
+{% if send_result %}
+<div class="bg-white rounded-xl shadow-sm border overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b {% if send_success %}bg-green-50{% else %}bg-red-50{% endif %}">
+        <h2 class="text-lg font-semibold {% if send_success %}text-green-800{% else %}text-red-800{% endif %}">
+            {% if send_success %}Message Sent!{% else %}Send Failed{% endif %}
+        </h2>
+    </div>
+    <div class="p-6">
+        <p class="text-sm text-gray-700">{{ send_result }}</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- User's Weekly Schedule -->
+{% if workout_schedule %}
+<div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+    <div class="px-6 py-4 border-b bg-gray-50">
+        <h2 class="text-lg font-semibold text-gray-900">{{ selected_user_name }}'s Weekly Schedule</h2>
+    </div>
+    <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {% set selected_day_name = None %}
+            {% if selected_date %}
+                {% set selected_day_name = selected_date %}
+            {% endif %}
+            {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+            <div class="border rounded-lg p-4 bg-gray-50">
+                <h3 class="font-medium text-gray-900 mb-2">{{ day }}</h3>
+                {% if workout_schedule.get(day) %}
+                    <p class="text-xs text-gray-500 mb-2">{{ workout_schedule[day].focus }}</p>
+                    <ul class="text-xs text-gray-700 space-y-1">
+                        {% for ex in workout_schedule[day].exercises[:3] %}
+                        <li>{{ ex.name }}</li>
+                        {% endfor %}
+                        {% if workout_schedule[day].exercises|length > 3 %}
+                        <li class="text-gray-400">+{{ workout_schedule[day].exercises|length - 3 }} more</li>
+                        {% endif %}
+                    </ul>
+                {% else %}
+                    <p class="text-xs text-gray-400 italic">Rest day</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+    function previewMessage() {
+        submitForm('/admin/daily-test/preview');
+    }
+
+    function sendMessage() {
+        const userName = document.getElementById('user-select').selectedOptions[0]?.dataset.name || 'this user';
+        if (confirm(`Send daily message to ${userName} right now?`)) {
+            submitForm('/admin/daily-test/send');
+        }
+    }
+
+    function submitForm(action) {
+        const userId = document.getElementById('user-select').value;
+        const targetDate = document.getElementById('date-select').value;
+
+        if (!userId) {
+            alert('Please select a user first');
+            return;
+        }
+        if (!targetDate) {
+            alert('Please select a date');
+            return;
+        }
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = action;
+
+        const userInput = document.createElement('input');
+        userInput.type = 'hidden';
+        userInput.name = 'user_id';
+        userInput.value = userId;
+        form.appendChild(userInput);
+
+        const dateInput = document.createElement('input');
+        dateInput.type = 'hidden';
+        dateInput.name = 'target_date';
+        dateInput.value = targetDate;
+        form.appendChild(dateInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+</script>
+{% endblock %}

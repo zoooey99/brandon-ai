@@ -1,0 +1,29 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+
+# Environment variables (NEVER commit secrets!)
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Misc
+server/public
+vite.config.ts.*
+*.tar.gz
+*.log
+
+# Test artifacts and scratch screenshots (client/public image assets stay tracked)
+test-results/
+.playwright-mcp/

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Manual Actions{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Manual Actions</h1>
+    <p class="text-gray-500 mt-1">Trigger manual operations</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Schedule Daily Messages -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border">
+        <h2 class="text-lg font-semibold text-gray-900 mb-2">Schedule Daily Messages</h2>
+        <p class="text-gray-500 text-sm mb-4">
+            Create scheduled_message records for all users with preferred_text_time set.
+            This is normally run by cron at midnight.
+        </p>
+        <form method="POST" action="/admin/actions/schedule-daily">
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                Run Scheduling
+            </button>
+        </form>
+    </div>
+
+    <!-- Send Pending Messages -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border">
+        <h2 class="text-lg font-semibold text-gray-900 mb-2">Send Pending Messages</h2>
+        <p class="text-gray-500 text-sm mb-4">
+            Send all pending scheduled messages that are due.
+            This is normally run by cron every minute.
+        </p>
+        <form method="POST" action="/admin/actions/send-pending">
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                Send Now
+            </button>
+        </form>
+    </div>
+
+    <!-- Send Test Message -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border lg:col-span-2">
+        <h2 class="text-lg font-semibold text-gray-900 mb-2">Send Test Message</h2>
+        <p class="text-gray-500 text-sm mb-4">
+            Send a test message to a specific phone number.
+        </p>
+        <form method="POST" action="/admin/actions/send-test" class="flex flex-wrap gap-4">
+            <div class="flex-1 min-w-[200px]">
+                <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <input
+                    type="text"
+                    id="phone"
+                    name="phone"
+                    placeholder="+15555550100"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                >
+            </div>
+            <div class="flex-[2] min-w-[300px]">
+                <label for="message" class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                <input
+                    type="text"
+                    id="message"
+                    name="message"
+                    placeholder="Test message from Brandon admin"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                >
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                    Send Test
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Schedule for User -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border lg:col-span-2">
+        <h2 class="text-lg font-semibold text-gray-900 mb-2">Schedule Message for User</h2>
+        <p class="text-gray-500 text-sm mb-4">
+            Manually schedule a message for a specific user ID.
+        </p>
+        <form method="POST" action="/admin/actions/schedule-user" class="flex flex-wrap gap-4">
+            <div class="flex-1 min-w-[300px]">
+                <label for="user_id" class="block text-sm font-medium text-gray-700 mb-1">User ID</label>
+                <input
+                    type="text"
+                    id="user_id"
+                    name="user_id"
+                    placeholder="700faba8-e844-49fa-bdc6-64d4674bb30d"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                >
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+                    Schedule
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

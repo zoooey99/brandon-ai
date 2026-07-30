@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Version {{ version }} - {{ prompt_name }} - Prompts{% endblock %}
+
+{% block content %}
+<!-- Back Link -->
+<div class="mb-4">
+    <a href="/admin/prompts/{{ prompt_name }}/history" class="text-blue-600 hover:text-blue-800 flex items-center">
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+        Back to History
+    </a>
+</div>
+
+<div class="mb-8 flex justify-between items-start">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-900">Version {{ version }}</h1>
+        <p class="text-gray-500 mt-1">{{ prompt_name }}</p>
+    </div>
+    <div class="text-right">
+        <p class="text-sm text-gray-500">{{ version_data.created_at[:19] if version_data.created_at else 'Unknown' }}</p>
+        <p class="text-sm text-gray-400">{{ version_data.char_count }} characters</p>
+    </div>
+</div>
+
+<!-- Version Content -->
+<div class="bg-white rounded-xl shadow-sm border overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b bg-gray-50">
+        <h2 class="text-lg font-semibold text-gray-900">Prompt Content</h2>
+        <p class="text-xs text-gray-500 mt-1">Read-only view of this version</p>
+    </div>
+    <div class="p-4">
+        <pre class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm font-mono whitespace-pre-wrap overflow-x-auto max-h-[600px] overflow-y-auto">{{ version_data.prompt_text }}</pre>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="flex flex-wrap gap-3">
+    <form method="POST" action="/admin/prompts/{{ prompt_name }}/restore/{{ version }}" class="inline">
+        <button type="submit"
+            onclick="return confirm('Restore version {{ version }}? This will create a new version (v{{ current_version + 1 }}) with this content.')"
+            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+            Restore This Version
+        </button>
+    </form>
+
+    <a href="/admin/prompts/{{ prompt_name }}/diff?v1={{ version }}&v2={{ current_version }}"
+        class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-block">
+        Compare with Current (v{{ current_version }})
+    </a>
+
+    <a href="/admin/prompts/{{ prompt_name }}/history"
+        class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors inline-block">
+        Back to History
+    </a>
+</div>
+
+<!-- Context Info -->
+<div class="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
+    <div class="flex">
+        <svg class="w-5 h-5 text-blue-600 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+        </svg>
+        <div class="text-sm text-blue-800">
+            <p class="font-medium">About Restoring</p>
+            <p class="mt-1">Restoring a version creates a <strong>new</strong> version with this content. Your current version (v{{ current_version }}) will be preserved in the history.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
