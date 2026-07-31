@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from nanoid import generate as nanoid
 
+from app.config import settings
 from app.db.supabase_client import get_supabase
 
 logger = logging.getLogger(__name__)
@@ -89,7 +90,7 @@ def create_tracking_session(user_id: str, plan_id: int, day_name: str, focus: st
             if existing_token.data:
                 token = existing_token.data[0]["token"]
                 logger.info(f"Returning existing session {session_id} with token {token}")
-                return f"https://textbrandon.now/track/{token}"
+                return f"{settings.frontend_url}/track/{token}"
             else:
                 # Session exists but no token - create new token for it
                 # Expire 7 days after the session date (not from now)
@@ -102,7 +103,7 @@ def create_tracking_session(user_id: str, plan_id: int, day_name: str, focus: st
                     "expires_at": expires_at.isoformat()
                 }).execute()
                 logger.info(f"Created new token {token} for existing session {session_id}")
-                return f"https://textbrandon.now/track/{token}"
+                return f"{settings.frontend_url}/track/{token}"
 
         # 2. No existing session - create new one
         # Store workout_date and scheduled_for as user's local date (start of day)
@@ -133,7 +134,7 @@ def create_tracking_session(user_id: str, plan_id: int, day_name: str, focus: st
         }).execute()
 
         logger.info(f"Created workout session {session_id} with token {token}")
-        return f"https://textbrandon.now/track/{token}"
+        return f"{settings.frontend_url}/track/{token}"
 
     except Exception as e:
         logger.error(f"Error creating tracking session: {e}", exc_info=True)

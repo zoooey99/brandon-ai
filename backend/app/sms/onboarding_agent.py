@@ -32,7 +32,7 @@ Examples:
 - random message → "hey! finish setting up your account so we can get started: {onboarding_url}"
 """
 
-ONBOARDING_URL = "https://textbrandon.now/onboarding"
+ONBOARDING_URL = f"{settings.frontend_url}/onboarding"
 
 
 async def handle_onboarding_intro(phone_number: str, onboarding_user: dict) -> None:

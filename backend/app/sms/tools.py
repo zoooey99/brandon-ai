@@ -9,6 +9,7 @@ from typing import Any
 import json
 import logging
 
+from app.config import settings
 from app.db.supabase_client import get_supabase
 from app.db.queries import get_user_workout_plan
 from app.sms.analytics_tools import ANALYTICS_TOOL_DEFINITIONS, ANALYTICS_TOOL_MAP
@@ -168,7 +169,7 @@ def _get_tracking_url(session_id: int) -> str | None:
         .execute()
     )
     if resp.data:
-        return f"https://textbrandon.now/track/{resp.data[0]['token']}"
+        return f"{settings.frontend_url}/track/{resp.data[0]['token']}"
     return None
 
 
@@ -184,7 +185,7 @@ def _get_tracking_urls_bulk(session_ids: list[int]) -> dict[int, str]:
         .execute()
     )
     return {
-        row["session_id"]: f"https://textbrandon.now/track/{row['token']}"
+        row["session_id"]: f"{settings.frontend_url}/track/{row['token']}"
         for row in (resp.data or [])
     }
 

@@ -8,6 +8,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 import logging
 
+from app.config import settings
 from app.prompts.loader import get_prompt_with_model, safe_format
 
 logger = logging.getLogger(__name__)
@@ -54,7 +55,7 @@ def build_system_prompt(prompt_template: str, user_id: str, profile, pending_dra
         days_overview = ", ".join(
             f"{w.get('day', '?')} ({w.get('focus', '?')})" for w in workouts
         )
-        url = f"https://textbrandon.now/plan/draft/{token}"
+        url = f"{settings.frontend_url}/plan/draft/{token}"
         pending_draft_str = (
             f"PENDING PLAN DRAFT: You already sent this user a draft plan that they haven't accepted yet.\n"
             f"Draft URL: {url}\n"

@@ -4,7 +4,7 @@
 
 Brandon is a subscription AI fitness coach that users interact with entirely over iMessage. You sign up on the web, describe your goals and equipment, and get a personalized training plan. Then Brandon texts you every day: your workout, a tracking link, and a coach you can talk to like a real person ("traveling today, no barbell" → your session gets rewritten on the spot).
 
-This repo is a case study of the full system: three services I designed, built, and ran in production.
+This repo is a case study of the full system: three services I designed, built, and ran in production. It was extracted from the private production repos — 577 commits from December 2025 to March 2026 — with secrets and user data scrubbed, which is why the history here starts fresh.
 
 <img src="readme-assets/01.gif" width="280" alt="Landing page">
 
