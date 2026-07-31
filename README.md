@@ -107,6 +107,12 @@ Each service has its own README with setup instructions:
 
 All secrets are environment-driven; each project ships a `.env.example`.
 
+## Testing
+
+- **Backend**: 147 pytest tests across the message queue, scheduler, chunking, prompt building, and auth ([backend/tests/](backend/tests/))
+- **Relay**: 41 node:test unit tests on the pure-logic modules — chat.db text decoding, middleware, relay semantics ([imessage-relay/test/](imessage-relay/test/))
+- **Web**: vitest unit tests plus a Playwright e2e suite for onboarding ([web/e2e/](web/e2e/))
+
 ## Tech stack
 
 | Layer | Technologies |
