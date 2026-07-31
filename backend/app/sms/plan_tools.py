@@ -9,6 +9,7 @@ from typing import Any
 import logging
 
 from nanoid import generate as nanoid
+from app.config import settings
 from app.db.supabase_client import get_supabase
 from app.db.queries import get_user_workout_plan
 
@@ -163,7 +164,7 @@ def _save_plan_draft(user_id: str, plan_data: dict, **_kwargs) -> dict:
     if not result.data:
         return {"error": "Failed to save plan draft"}
 
-    url = f"https://textbrandon.now/plan/draft/{token}"
+    url = f"{settings.frontend_url}/plan/draft/{token}"
 
     logger.info(f"Plan draft saved for user {user_id}: {url}")
 
